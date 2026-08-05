@@ -19,22 +19,25 @@ export default function Navbar() {
           <Link href="/" className="text-muted hover:text-ink transition-colors">
             Markets
           </Link>
+
           {session && (
             <Link href="/markets/new" className="text-muted hover:text-ink transition-colors">
               New market
             </Link>
           )}
+
           {session && profile?.is_admin && (
             <Link href="/admin" className="text-muted hover:text-ink transition-colors">
               Admin
             </Link>
           )}
 
+          {/* Wait until auth initialization completes before rendering buttons */}
           {!loading && (
             <>
               {session ? (
                 <>
-                  {/* Balance Display */}
+                  {/* User Balance Badge */}
                   <Link
                     href="/profile"
                     className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
@@ -51,6 +54,7 @@ export default function Navbar() {
                   </button>
                 </>
               ) : (
+                /* Sign In Button (Only shown when not signed in) */
                 <Link
                   href="/login"
                   className="bg-brand text-bg font-medium rounded-full px-4 py-1.5 hover:opacity-90 transition-opacity"
