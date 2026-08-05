@@ -29,25 +29,32 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
-    // maybeSingle() so a missing row is `null` rather than an error. A user can
-    // be signed in (auth.users) but have no public.users row if they signed up
-    // before the schema/trigger existed -- surface that instead of silently
-    // rendering a blank balance.
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (error) {
-      console.error("Failed to load profile:", error.message, error.details);
-    } else if (!data) {
-      console.error(
-        `No public.users row for auth user ${userId}. Run the backfill in supabase/schema.sql.`
-      );
+    const { data } = await supabase.from("users").select("*").eq("id", userId).single();
+    if (data) {
+      setProfile(data as User);
+      return;
     }
 
-    setProfile((data as User | null) ?? null);
+    // No public.users row for this signed-in account (e.g. the auto-create
+    // trigger didn't fire for it). Self-heal by creating one now.
+    const {
+      data: { session: freshSession },
+    } = await supabase.auth.getSession();
+    if (!freshSession) return;
+
+    try {
+      const res = await fetch("/api/auth/ensure-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${freshSession.access_token}`,
+        },
+      });
+      const body = await res.json();
+      if (res.ok) setProfile(body.profile as User);
+    } catch {
+      // Swallow -- profile stays null and the UI degrades gracefully.
+    }
   }
 
   async function refreshProfile() {
