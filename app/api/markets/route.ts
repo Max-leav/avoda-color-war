@@ -4,8 +4,8 @@ import { getServiceClient } from "@/lib/supabase";
 
 // ============================================================================
 // POST /api/markets
-// Creates a new market. Any signed-in user can create one (change this if
-// you want market creation restricted to an admin allowlist).
+// Creates a new market. Admin accounts only -- hiding the nav link doesn't
+// stop anyone from POSTing here directly, so the check has to live server-side.
 // Body: { title: string, description?: string, closeTime: string (ISO) }
 // ============================================================================
 export async function POST(req: NextRequest) {
@@ -33,6 +33,20 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getServiceClient();
+
+    const { data: profile } = await db
+      .from("users")
+      .select("is_admin")
+      .eq("id", userData.user.id)
+      .single();
+
+    if (!profile?.is_admin) {
+      return NextResponse.json(
+        { error: "Only admin accounts can create markets." },
+        { status: 403 }
+      );
+    }
+
     const { data: market, error } = await db
       .from("markets")
       .insert({

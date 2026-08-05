@@ -5,8 +5,10 @@ import { supabase } from "@/lib/supabase";
 import { Market } from "@/lib/types";
 import MarketCard from "@/components/MarketCard";
 import Ticker from "@/components/Ticker";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function HomePage() {
+  const { profile } = useAuth();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,10 +44,13 @@ export default function HomePage() {
       {!loading && open.length === 0 && (
         <div className="border border-dashed border-border rounded-xl p-10 text-center text-muted">
           No open markets yet.{" "}
-          <a href="/markets/new" className="text-brand hover:underline">
-            Create the first one
-          </a>
-          .
+          {profile?.is_admin ? (
+            <a href="/markets/new" className="text-brand hover:underline">
+              Create the first one
+            </a>
+          ) : (
+            "Check back once an admin opens one."
+          )}
         </div>
       )}
 

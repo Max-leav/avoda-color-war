@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function NewMarketPage() {
-  const { session } = useAuth();
+  const { session, profile, loading } = useAuth();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -45,6 +46,25 @@ export default function NewMarketPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (loading) {
+    return <p className="text-muted text-sm">Loading…</p>;
+  }
+
+  // Matches the server-side check in POST /api/markets.
+  if (!session || !profile?.is_admin) {
+    return (
+      <div className="border border-border bg-surface rounded-xl p-6">
+        <h1 className="font-display font-600 text-ink mb-1">Admins only</h1>
+        <p className="text-muted text-sm">
+          Only admin accounts can create markets.{" "}
+          <Link href="/" className="text-brand hover:underline">
+            Back to markets
+          </Link>
+        </p>
+      </div>
+    );
   }
 
   return (
