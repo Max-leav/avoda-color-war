@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { formatCredits } from "@/lib/calculations";
 
 export default function Navbar() {
-  const { session, profile } = useAuth();
+  const { session, profile, loading } = useAuth();
 
   return (
     <header className="border-b border-border bg-surface/80 backdrop-blur sticky top-0 z-20">
@@ -30,30 +30,35 @@ export default function Navbar() {
             </Link>
           )}
 
-          {session && profile ? (
+          {/* Prevent flashing sign-in button while checking initial auth session */}
+          {!loading && (
             <>
-              {!profile.is_admin && (
+              {session ? (
+                <>
+                  {profile && !profile.is_admin && (
+                    <Link
+                      href="/profile"
+                      className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
+                    >
+                      {formatCredits(profile.balance)} cr
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => supabase.auth.signOut()}
+                    className="text-muted hover:text-ink transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
                 <Link
-                  href="/profile"
-                  className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
+                  href="/login"
+                  className="bg-brand text-bg font-medium rounded-full px-4 py-1.5 hover:opacity-90 transition-opacity"
                 >
-                  {formatCredits(profile.balance)} cr
+                  Sign in
                 </Link>
               )}
-              <button
-                onClick={() => supabase.auth.signOut()}
-                className="text-muted hover:text-ink transition-colors"
-              >
-                Sign out
-              </button>
             </>
-          ) : (
-            <Link
-              href="/login"
-              className="bg-brand text-bg font-medium rounded-full px-4 py-1.5 hover:opacity-90 transition-opacity"
-            >
-              Sign in
-            </Link>
           )}
         </nav>
       </div>
