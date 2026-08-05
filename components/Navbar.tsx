@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { formatCredits } from "@/lib/calculations";
 
 export default function Navbar() {
-  const { session, profile } = useAuth();
+  const { session, profile, loading } = useAuth();
 
   return (
     <header className="border-b border-border bg-surface/80 backdrop-blur sticky top-0 z-20">
@@ -19,41 +19,50 @@ export default function Navbar() {
           <Link href="/" className="text-muted hover:text-ink transition-colors">
             Markets
           </Link>
+
           {session && (
             <Link href="/markets/new" className="text-muted hover:text-ink transition-colors">
               New market
             </Link>
           )}
+
           {session && profile?.is_admin && (
             <Link href="/admin" className="text-muted hover:text-ink transition-colors">
               Admin
             </Link>
           )}
 
-          {session && profile ? (
+          {/* Wait until auth initialization completes before rendering buttons */}
+          {!loading && (
             <>
-              {!profile.is_admin && (
+              {session ? (
+                <>
+                  {/* User Balance Badge */}
+                  <Link
+                    href="/profile"
+                    className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
+                  >
+                    {profile ? `${formatCredits(profile.balance)} cr` : "No Balance Found"}
+                  </Link>
+
+                  {/* Sign Out Button */}
+                  <button
+                    onClick={() => supabase.auth.signOut()}
+                    className="text-muted hover:text-ink transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                /* Sign In Button (Only shown when not signed in) */
                 <Link
-                  href="/profile"
-                  className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
+                  href="/login"
+                  className="bg-brand text-bg font-medium rounded-full px-4 py-1.5 hover:opacity-90 transition-opacity"
                 >
-                  {formatCredits(profile.balance)} cr
+                  Sign in
                 </Link>
               )}
-              <button
-                onClick={() => supabase.auth.signOut()}
-                className="text-muted hover:text-ink transition-colors"
-              >
-                Sign out
-              </button>
             </>
-          ) : (
-            <Link
-              href="/login"
-              className="bg-brand text-bg font-medium rounded-full px-4 py-1.5 hover:opacity-90 transition-opacity"
-            >
-              Sign in
-            </Link>
           )}
         </nav>
       </div>
