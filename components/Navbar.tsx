@@ -42,7 +42,7 @@ export default function Navbar() {
                     href="/profile"
                     className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
                   >
-                    {profile ? `${formatCredits(profile.balance)} cr` : "..."}
+                    {profile ? `${formatCredits(profile.balance)} cr` : "No Balance Found"}
                   </Link>
 
                   {/* Sign Out Button */}
