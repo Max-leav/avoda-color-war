@@ -29,8 +29,25 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase.from("users").select("*").eq("id", userId).single();
-    setProfile(data as User | null);
+    // maybeSingle() so a missing row is `null` rather than an error. A user can
+    // be signed in (auth.users) but have no public.users row if they signed up
+    // before the schema/trigger existed -- surface that instead of silently
+    // rendering a blank balance.
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Failed to load profile:", error.message, error.details);
+    } else if (!data) {
+      console.error(
+        `No public.users row for auth user ${userId}. Run the backfill in supabase/schema.sql.`
+      );
+    }
+
+    setProfile((data as User | null) ?? null);
   }
 
   async function refreshProfile() {
