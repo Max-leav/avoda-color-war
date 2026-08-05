@@ -3,6 +3,7 @@ export type User = {
   username: string;
   email: string;
   balance: number;
+  is_admin: boolean;
   created_at: string;
 };
 

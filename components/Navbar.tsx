@@ -24,15 +24,22 @@ export default function Navbar() {
               New market
             </Link>
           )}
+          {session && profile?.is_admin && (
+            <Link href="/admin" className="text-muted hover:text-ink transition-colors">
+              Admin
+            </Link>
+          )}
 
           {session && profile ? (
             <>
-              <Link
-                href="/profile"
-                className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
-              >
-                {formatCredits(profile.balance)} cr
-              </Link>
+              {!profile.is_admin && (
+                <Link
+                  href="/profile"
+                  className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
+                >
+                  {formatCredits(profile.balance)} cr
+                </Link>
+              )}
               <button
                 onClick={() => supabase.auth.signOut()}
                 className="text-muted hover:text-ink transition-colors"

@@ -13,6 +13,7 @@ create table public.users (
   username text unique not null,
   email text unique not null,
   balance numeric(12,2) not null default 1000.00,  -- virtual credits, not money
+  is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -61,8 +62,12 @@ alter table public.transactions enable row level security;
 create policy "users are viewable by everyone"
   on public.users for select using (true);
 
-create policy "users can update their own profile"
-  on public.users for update using (auth.uid() = id);
+-- No client-side UPDATE policy is granted on public.users. This is
+-- deliberate: balance and is_admin must only ever change through the
+-- server-side API routes (bet placement, market resolution, admin balance
+-- adjustment), which use the service role key and bypass RLS after their
+-- own validation. If a user could UPDATE their own row directly, they could
+-- set their own balance or is_admin from the browser dev tools.
 
 create policy "markets are viewable by everyone"
   on public.markets for select using (true);
@@ -94,3 +99,13 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ============================================================================
+-- MIGRATION -- run this instead if you already ran this schema once before
+-- and just need to add admin support to an existing database. Paste ONLY
+-- the block below into the SQL Editor (skip everything above, since those
+-- tables already exist). Safe to run even if is_admin already exists.
+-- ============================================================================
+-- alter table public.users add column if not exists is_admin boolean not null default false;
+-- drop policy if exists "users can update their own profile" on public.users;
+

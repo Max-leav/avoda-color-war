@@ -122,7 +122,45 @@ committed.
    Vercel URL to the Site URL / Redirect URLs so auth emails link back
    correctly.
 
-## 7. Notes on trust & abuse, since this is just for friends
+## 7. Admin accounts
+
+`users.is_admin` controls admin status. Admins:
+- **cannot place bets** (enforced server-side in `app/api/bets/route.ts`)
+- can credit/debit any user's balance from `/admin`, via
+  `app/api/admin/adjust-balance/route.ts`
+
+**A user's balance can only ever change in three ways**, all server-side,
+all logged to `transactions`:
+1. Placing a bet (`app/api/bets/route.ts`)
+2. A market resolving (`app/api/markets/[id]/resolve/route.ts`)
+3. An admin adjustment (`app/api/admin/adjust-balance/route.ts`)
+
+There is deliberately no database policy that lets a signed-in user UPDATE
+their own `users` row from the browser — that would let anyone set their own
+`balance` or `is_admin` from dev tools. All writes to those columns go
+through the service role key on the server, after each route's own checks.
+
+### Making an account an admin
+
+There's no self-serve toggle in the app (on purpose — you don't want users
+making themselves admin). To promote an account:
+
+1. Have that person sign up normally first, so their row exists in
+   `public.users`.
+2. In Supabase, go to **Table Editor → users**, find their row, and flip
+   `is_admin` to `true`. Or run in the **SQL Editor**:
+
+   ```sql
+   update public.users set is_admin = true where email = 'them@example.com';
+   ```
+
+3. They'll need to sign out and back in (or just refresh) for the app to
+   pick up the change.
+
+If you're adding `is_admin` to a database that already has the old schema,
+run the migration block at the bottom of `supabase/schema.sql` first.
+
+## 8. Notes on trust & abuse, since this is just for friends
 
 - Anyone signed in can currently create a market and is the sole authority
   who can resolve it (`app/api/markets/[id]/resolve/route.ts` checks

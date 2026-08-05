@@ -43,10 +43,10 @@ export async function POST(req: NextRequest) {
 
     const db = getServiceClient();
 
-    // Load the user's current balance and the market state.
+    // Load the user's current balance/role and the market state.
     const [{ data: profile, error: profileErr }, { data: market, error: marketErr }] =
       await Promise.all([
-        db.from("users").select("id, balance").eq("id", userId).single(),
+        db.from("users").select("id, balance, is_admin").eq("id", userId).single(),
         db.from("markets").select("*").eq("id", marketId).single(),
       ]);
 
@@ -55,6 +55,12 @@ export async function POST(req: NextRequest) {
     }
     if (marketErr || !market) {
       return NextResponse.json({ error: "Market not found." }, { status: 404 });
+    }
+    if (profile.is_admin) {
+      return NextResponse.json(
+        { error: "Admin accounts cannot place bets." },
+        { status: 403 }
+      );
     }
     if (market.resolved) {
       return NextResponse.json({ error: "This market has already resolved." }, { status: 400 });
