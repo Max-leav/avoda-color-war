@@ -30,31 +30,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   async function loadProfile(userId: string) {
     const { data } = await supabase.from("users").select("*").eq("id", userId).single();
-    if (data) {
-      setProfile(data as User);
-      return;
-    }
-
-    // No public.users row for this signed-in account (e.g. the auto-create
-    // trigger didn't fire for it). Self-heal by creating one now.
-    const {
-      data: { session: freshSession },
-    } = await supabase.auth.getSession();
-    if (!freshSession) return;
-
-    try {
-      const res = await fetch("/api/auth/ensure-profile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${freshSession.access_token}`,
-        },
-      });
-      const body = await res.json();
-      if (res.ok) setProfile(body.profile as User);
-    } catch {
-      // Swallow -- profile stays null and the UI degrades gracefully.
-    }
+    setProfile(data as User | null);
   }
 
   async function refreshProfile() {
