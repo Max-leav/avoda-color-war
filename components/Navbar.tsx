@@ -30,19 +30,19 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* Prevent flashing sign-in button while checking initial auth session */}
           {!loading && (
             <>
               {session ? (
                 <>
-                  {profile && !profile.is_admin && (
-                    <Link
-                      href="/profile"
-                      className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
-                    >
-                      {formatCredits(profile.balance)} cr
-                    </Link>
-                  )}
+                  {/* Balance Display */}
+                  <Link
+                    href="/profile"
+                    className="font-mono text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
+                  >
+                    {profile ? `${formatCredits(profile.balance)} cr` : "..."}
+                  </Link>
+
+                  {/* Sign Out Button */}
                   <button
                     onClick={() => supabase.auth.signOut()}
                     className="text-muted hover:text-ink transition-colors"
