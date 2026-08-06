@@ -13,6 +13,13 @@ type Mode =
 
 const MIN_PASSWORD_LENGTH = 8;
 
+// Supabase's OTP length is a project setting (Authentication -> Providers ->
+// Email), default 6 but settable up to 10. Hardcoding 6 here meant the input
+// truncated a longer code as it was typed, so it could never match -- accept
+// the whole range instead of assuming.
+const MIN_CODE_LENGTH = 6;
+const MAX_CODE_LENGTH = 10;
+
 /**
  * Password reset, two ways in.
  *
@@ -42,7 +49,6 @@ export default function ResetPasswordPage() {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [resent, setResent] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,8 +125,8 @@ export default function ResetPasswordPage() {
     setError(null);
 
     const cleanedCode = code.replace(/\D/g, "");
-    if (cleanedCode.length < 6) {
-      setError("Enter the 6-digit code from the email.");
+    if (cleanedCode.length < MIN_CODE_LENGTH) {
+      setError(`Reset codes are at least ${MIN_CODE_LENGTH} digits.`);
       return;
     }
     if (!email.trim()) {
@@ -146,30 +152,6 @@ export default function ResetPasswordPage() {
     }
   }
 
-  async function sendNewCode() {
-    setError(null);
-    setResent(false);
-
-    if (!email.trim()) {
-      setError("Enter your email first.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const { error: sendError } = await supabase.auth.resetPasswordForEmail(
-        email.trim(),
-        { redirectTo: `${window.location.origin}/reset-password` }
-      );
-      if (sendError) throw sendError;
-      setResent(true);
-      setLinkError(null);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   async function savePassword() {
     setError(null);
@@ -265,8 +247,8 @@ export default function ResetPasswordPage() {
     <div className="max-w-sm mx-auto">
       <h1 className="font-display text-2xl font-700 text-ink mb-1">Reset your password</h1>
       <p className="text-muted text-sm mb-6">
-        Enter your email and the 6-digit reset code. If you didn&apos;t get one by
-        email, ask an admin — they can issue you a code on the spot.
+        Ask an admin for a reset code, then enter it here with your email. You pick
+        the new password yourself — they never see it.
       </p>
 
       {linkError && (
@@ -274,7 +256,7 @@ export default function ResetPasswordPage() {
           <p className="text-xs text-ink mb-1">That link didn&apos;t work</p>
           <p className="text-[11px] text-muted leading-relaxed">
             {linkError} Reset codes are single-use and expire. Ask an admin for a
-            fresh one, or request a new code below.
+            fresh one.
           </p>
         </div>
       )}
@@ -288,11 +270,13 @@ export default function ResetPasswordPage() {
       />
 
       <label className="block text-xs uppercase tracking-wide text-muted mb-1">
-        6-digit code
+        Reset code
       </label>
       <input
         value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        onChange={(e) =>
+          setCode(e.target.value.replace(/\D/g, "").slice(0, MAX_CODE_LENGTH))
+        }
         onKeyDown={(e) => {
           if (e.key === "Enter") verifyCode();
         }}
@@ -303,7 +287,6 @@ export default function ResetPasswordPage() {
       />
 
       {error && <p className="text-xs text-no mb-3">{error}</p>}
-      {resent && <p className="text-xs text-yes mb-3">New code sent. Check your email.</p>}
 
       <button
         onClick={verifyCode}
@@ -313,13 +296,6 @@ export default function ResetPasswordPage() {
         {submitting ? "Checking…" : "Continue"}
       </button>
 
-      <button
-        onClick={sendNewCode}
-        disabled={submitting}
-        className="w-full text-sm text-muted hover:text-ink transition-colors disabled:opacity-40"
-      >
-        Send me a new code
-      </button>
 
       <p className="text-center mt-4">
         <Link href="/login" className="text-xs text-muted hover:text-brand transition-colors">

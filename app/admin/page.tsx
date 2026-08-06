@@ -237,9 +237,12 @@ export default function AdminPage() {
             {access?.code && (
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-[11px] text-muted mb-1">
-                  Reset code for {access.username}. Read it out, then send them to the
-                  reset page — they enter their email and this code and pick their own
-                  password. Single use, and it expires.
+                  Reset code for {access.username}. Read it out — they go to Sign in,
+                  click &quot;Forgot your password?&quot;, then enter their email and this
+                  code and pick their own password. Single use, and it expires.
+
+                  Length is set by Supabase (Authentication &rarr; Providers &rarr; Email
+                  &rarr; Email OTP Length), not by this app.
                 </p>
                 <p className="font-mono text-2xl tracking-[0.25em] text-brand select-all">
                   {access.code}
