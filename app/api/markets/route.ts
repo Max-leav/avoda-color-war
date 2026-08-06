@@ -34,13 +34,33 @@ export async function POST(req: NextRequest) {
 
     const db = getServiceClient();
 
-    const { data: profile } = await db
+    // Three different failures live here and they need different answers:
+    // the lookup itself failing (config problem), no row existing (broken
+    // account), and the row saying you're not an admin. Collapsing all three
+    // into one 403 makes a misconfigured server look like a permissions
+    // decision, which is exactly how you end up chasing the wrong bug.
+    const { data: profile, error: profileErr } = await db
       .from("users")
       .select("is_admin")
       .eq("id", userData.user.id)
-      .single();
+      .maybeSingle();
 
-    if (!profile?.is_admin) {
+    if (profileErr) {
+      console.error("POST /api/markets: admin lookup failed:", profileErr);
+      return NextResponse.json(
+        { error: `Could not verify your account: ${profileErr.message}` },
+        { status: 500 }
+      );
+    }
+
+    if (!profile) {
+      return NextResponse.json(
+        { error: "No profile row found for this account." },
+        { status: 404 }
+      );
+    }
+
+    if (!profile.is_admin) {
       return NextResponse.json(
         { error: "Only admin accounts can create markets." },
         { status: 403 }

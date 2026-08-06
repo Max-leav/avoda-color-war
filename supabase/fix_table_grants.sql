@@ -32,10 +32,27 @@ alter default privileges in schema public
   grant select on tables to anon, authenticated;
 
 -- ----------------------------------------------------------------------------
+-- SERVICE ROLE
+-- Every write in this app (creating a market, placing a bet, resolving a
+-- market, admin balance adjustments) runs server-side through the service
+-- role key. service_role bypasses RLS, but it still needs table GRANTs like
+-- any other role -- if the tables were created under a role whose default
+-- privileges don't cover it, these were skipped too, and the symptom is a
+-- server-side read silently coming back empty.
+-- ----------------------------------------------------------------------------
+
+grant usage on schema public to service_role;
+grant all privileges on all tables in schema public to service_role;
+grant all privileges on all sequences in schema public to service_role;
+
+alter default privileges in schema public
+  grant all privileges on tables to service_role;
+
+-- ----------------------------------------------------------------------------
 -- Verify: you should see a select row for each table/role pair above.
 -- ----------------------------------------------------------------------------
 select table_name, grantee, privilege_type
 from information_schema.role_table_grants
 where table_schema = 'public'
-  and grantee in ('anon', 'authenticated')
+  and grantee in ('anon', 'authenticated', 'service_role')
 order by table_name, grantee;
