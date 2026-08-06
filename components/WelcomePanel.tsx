@@ -21,10 +21,10 @@ const FEE_PERCENT = Math.round(BROKER_FEE_RATE * 100);
  */
 
 const DEFAULT_CREDITS_HELP =
-  "Credits are handed out by an admin — they don't arrive automatically when you sign up. Find an admin to get your starting stack, and to top up if you bust.";
+  "Credits are handed out by me, Max Leavitt. They don't arrive automatically when you sign up. When I have received your venmo, @Max-leav, I will then give your account credits at a 1:1 ratio. At the end of Color War, all credits in your account will be payed back out via venmo at a 1:1 ratio.";
 
 const DEFAULT_PASSWORD_HELP =
-  "Ask an admin for a reset code. Then go to Sign in, tap \"Forgot your password?\", and enter your email with that code. You choose the new password yourself — no one else sees it.";
+  "If you need to reset your password, please send an email to \"max@kesame.com\" asking for a password reset. I will then send a reset code back to you which will be active for 1 hour. Then go to Sign in, tap \"Forgot your password?\", and enter your email with that code. You choose the new password yourself.";
 
 function Section({
   title,
@@ -96,24 +96,22 @@ export default function WelcomePanel() {
           <p>
             <span className="text-ink">Your odds aren&apos;t locked in.</span> The rate
             shown on a market is what it pays right now, and it moves until betting
-            closes. More money on your side shrinks your share; more on the other side
+            closes. More money on your side shrinks your share, while more on the other side
             grows it. What you collect is worked out from the pools as they stand when
-            the market closes — not from the number showing when you bet.
+            the market closes, NOT from the number showing when you bet.
           </p>
           <p>
             Your own bet moves it too. Staking 100 on a market showing 1.95× won&apos;t
             pay 1.95×, because your 100 joins the pool you&apos;re backing and dilutes
-            it. The bet form prices your exact stake as you type — that&apos;s the
-            honest number.
+            it. The bet form prices your exact stake as you type in your potential stake.
           </p>
           <p>
-            The house keeps <span className="text-ink">{FEE_PERCENT}% of winnings</span>.
-            It comes out of what you win, never out of your stake coming back, so a win
-            is always a win.
+            I will keep a <span className="text-ink">{FEE_PERCENT}% broker fee</span>
+            on. This is the same fee sportsbooks and prediction markets like Kalshi use.
           </p>
           <p>
-            If nobody bet the winning side, or a market gets cancelled, every stake is
-            refunded in full with no fee.
+            If nobody bets the winning side, or a market gets cancelled, every stake is
+            refunded in full.
           </p>
         </Section>
 
