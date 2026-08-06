@@ -78,6 +78,29 @@ create policy "bets are viewable by everyone"
 create policy "users can view their own transactions"
   on public.transactions for select using (auth.uid() = user_id);
 
+-- ============================================================================
+-- TABLE GRANTS
+-- RLS policies decide which rows a role can see, but GRANTs decide whether
+-- the role can touch the table at all. Both are required. Without these, the
+-- browser client fails with "permission denied for table users" (42501)
+-- before any policy above is ever evaluated.
+--
+-- SELECT only: every write goes through a server-side API route using the
+-- service role key, which bypasses RLS after doing its own validation.
+-- Granting INSERT/UPDATE here would let a user edit their own balance from
+-- the browser console.
+-- ============================================================================
+
+grant usage on schema public to anon, authenticated;
+
+grant select on public.users to anon, authenticated;
+grant select on public.markets to anon, authenticated;
+grant select on public.bets to anon, authenticated;
+grant select on public.transactions to authenticated;
+
+alter default privileges in schema public
+  grant select on tables to anon, authenticated;
+
 create function public.handle_new_user()
 returns trigger as $$
 begin
