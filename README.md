@@ -11,7 +11,7 @@ never touches the funds — is regulated gambling in the U.S. Kalshi can do this
 legally only because it's a CFTC-registered exchange; that license is what
 makes it legal, not the tech stack. Routing settlement through Venmo doesn't
 create an exemption, and it violates Venmo's own terms. This build uses a
-free-credits balance (`users.balance`) that starts at 1000 and is never tied
+free-credits balance (`users.balance`) that starts at 0 and is never tied
 to any real payment method, which is what makes it fine to self-host and
 share with friends.
 
@@ -71,7 +71,8 @@ tools and giving themselves free credits.
 1. Create a project at [supabase.com](https://supabase.com).
 2. Go to **SQL Editor → New query**, paste the entire contents of
    `supabase/schema.sql`, and run it. This creates all four tables, Row
-   Level Security policies, and a trigger that gives every new signup 1000
+   Level Security policies, and a trigger that creates a profile row for every
+   new signup with a 0
    free credits automatically.
 3. Go to **Authentication → Providers** and make sure **Email** is enabled.
    For quick local testing you can turn off "Confirm email" under
@@ -92,7 +93,8 @@ npm install
 npm run dev
 ```
 
-Visit `http://localhost:3000`, sign up (you'll start with 1000 credits),
+Visit `http://localhost:3000`, sign up (you'll start with 0 credits -- an admin
+issues them from the Admin page),
 create a market, and place a bet.
 
 ## 5. Push to GitHub
@@ -195,3 +197,21 @@ Supabase's built-in email sender is rate-limited to a few messages per hour on
 the free tier, which is fine for a camp-sized group but will silently throttle
 you during heavy testing. Set up custom SMTP under Authentication → Emails if
 you hit it.
+
+## Credits and the house cut
+
+New accounts start at **0 credits**. Credits only enter circulation when an
+admin issues them from the Admin page, which is also the only place they can
+be taken back. That makes the total supply something you control rather than
+something that grows every time someone registers another email address.
+
+Winning bets pay out **minus a 5% broker's fee**, set by `BROKER_FEE_RATE` in
+`lib/calculations.ts`. The fee comes out of winnings only -- never out of the
+stake being returned, and never out of a refund. That ordering matters: 5% of
+the gross payout could make a narrow win pay back less than was staked, which
+means being right and losing credits at the same time.
+
+The fee isn't paid to anyone. It's simply not distributed, so total credits in
+circulation shrink slightly with every resolved market. If you'd rather the
+house actually accumulate it, credit it to a designated admin account during
+resolution in `app/api/markets/[id]/resolve/route.ts`.

@@ -11,6 +11,7 @@ import {
   impliedNoPrice,
   impliedYesPrice,
   previewPayout,
+  BROKER_FEE_RATE,
 } from "@/lib/calculations";
 
 export default function BetForm({
@@ -145,7 +146,7 @@ export default function BetForm({
             </span>
           </div>
 
-          <div className="flex items-baseline justify-between text-xs mb-2">
+          <div className="flex items-baseline justify-between text-xs mb-1.5">
             <span className="text-muted">
               Return if {side.toUpperCase()} wins
             </span>
@@ -155,6 +156,15 @@ export default function BetForm({
               }`}
             >
               +{formatCredits(preview.profit)}
+            </span>
+          </div>
+
+          <div className="flex items-baseline justify-between text-xs mb-2">
+            <span className="text-muted">
+              Broker's fee ({Math.round(BROKER_FEE_RATE * 100)}% of winnings)
+            </span>
+            <span className="font-mono tabular-nums text-muted">
+              −{formatCredits(preview.fee)}
             </span>
           </div>
 
@@ -173,8 +183,8 @@ export default function BetForm({
               ? `No credits on ${side === "yes" ? "NO" : "YES"} yet, so there's nothing to win
                  off this bet -- you'd just get your stake back. It grows as bets land on
                  the other side.`
-              : `Estimate at the current pool sizes, and it already accounts for your own
-                 stake joining the pool. It moves as more bets come in.`}
+              : `Estimate at the current pool sizes, already net of the fee and of your
+                 own stake joining the pool. It moves as more bets come in.`}
           </p>
         </div>
       )}

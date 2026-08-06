@@ -44,17 +44,11 @@ export async function POST(req: NextRequest) {
 
     const { data: created, error: insertErr } = await db
       .from("users")
-      .insert({ id: user.id, username, email: user.email, balance: 1000.0 })
+      // Starts at zero -- credits are issued by an admin, not handed out on signup.
+      .insert({ id: user.id, username, email: user.email, balance: 0 })
       .select()
       .single();
     if (insertErr) throw insertErr;
-
-    await db.from("transactions").insert({
-      user_id: user.id,
-      type: "signup_bonus",
-      amount: 1000.0,
-      description: "Welcome bonus -- play-money credits (backfilled)",
-    });
 
     return NextResponse.json({ profile: created });
   } catch (err) {

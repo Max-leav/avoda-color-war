@@ -13,17 +13,9 @@ begin
     new.id,
     coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
     new.email,
-    1000.00
+    0.00
   )
   on conflict (id) do nothing;
-
-  insert into public.transactions (user_id, type, amount, description)
-  select new.id, 'signup_bonus', 1000.00, 'Welcome bonus -- play-money credits'
-  where exists (select 1 from public.users where id = new.id)
-    and not exists (
-      select 1 from public.transactions
-      where user_id = new.id and type = 'signup_bonus'
-    );
 
   return new;
 end;
@@ -41,21 +33,13 @@ select
   au.id,
   coalesce(au.raw_user_meta_data->>'username', split_part(au.email, '@', 1)),
   au.email,
-  1000.00
+  0.00
 from auth.users au
 left join public.users pu on pu.id = au.id
 where pu.id is null;
 
--- 3. Give backfilled users their signup bonus transaction too.
-insert into public.transactions (user_id, type, amount, description)
-select id, 'signup_bonus', 1000.00, 'Welcome bonus -- play-money credits'
-from public.users u
-where not exists (
-  select 1 from public.transactions t
-  where t.user_id = u.id and t.type = 'signup_bonus'
-);
 
--- 4. Sanity check -- run this after and confirm every auth user has a match.
+-- 3. Sanity check -- run this after and confirm every auth user has a match.
 select au.email, pu.id is not null as has_profile, pu.balance
 from auth.users au
 left join public.users pu on pu.id = au.id

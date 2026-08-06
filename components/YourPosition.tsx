@@ -5,6 +5,7 @@ import { useAuth } from "./AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { Bet, Market } from "@/lib/types";
 import {
+  BROKER_FEE_RATE,
   calculatePayout,
   formatCredits,
   isRefundedMarket,
@@ -146,8 +147,10 @@ export default function YourPosition({ market }: { market: Market }) {
       <h2 className="font-display font-600 text-ink mb-1">Your position</h2>
       <p className="text-xs text-muted mb-4">
         {closedToBets
-          ? "Betting is closed, so the pools are final -- these are exact."
-          : "Estimates. They move as more bets come in."}
+          ? `Betting is closed, so the pools are final -- these are exact, after the
+             ${Math.round(BROKER_FEE_RATE * 100)}% broker's fee.`
+          : `Estimates, net of the ${Math.round(BROKER_FEE_RATE * 100)}% broker's fee.
+             They move as more bets come in.`}
       </p>
 
       {positions.map((p) => (

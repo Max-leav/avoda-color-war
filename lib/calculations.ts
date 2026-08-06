@@ -10,6 +10,10 @@ import { Market, Bet } from "./types";
 // proportion to how much each of them staked, on top of getting their own
 // stake back.
 //
+// The house takes a cut (BROKER_FEE_RATE) out of the losing pool before
+// it's split among the winners, so winners collect their stake plus 95%
+// of what they'd otherwise have won.
+//
 // This is simpler and more transparent than an order-book or AMM model
 // (like Kalshi/Polymarket use), which is why it's a good starting point for
 // a small self-hosted market. It has one tradeoff worth knowing: the price
@@ -19,6 +23,22 @@ import { Market, Bet } from "./types";
 // ============================================================================
 
 const DEFAULT_PROBABILITY = 0.5;
+
+/**
+ * The house's cut, taken on winnings only -- not on the stake coming back,
+ * and not on refunds.
+ *
+ * Taking it off the gross payout instead would mean a narrow win could
+ * return less than was staked: bet 100, win 2 in profit, and 5% of 102 is
+ * 5.10, so you'd hand back 96.90 having *won* the bet. Charging the rake on
+ * winnings alone keeps "I was right" and "I made money" the same statement,
+ * which is the version people can reason about. It's also how a tote board
+ * does it: the takeout comes out of the losing pool before it's split up.
+ *
+ * To switch to a cut of the gross payout instead, apply the rate to the
+ * whole return in calculatePayout rather than to shareOfLosingPool.
+ */
+export const BROKER_FEE_RATE = 0.05;
 
 /** Implied probability of YES, given the current pools. */
 export function impliedYesPrice(market: Pick<Market, "yes_pool" | "no_pool">): number {
@@ -58,13 +78,31 @@ export function calculatePayout(
   // Nobody backed the winning side, so there's no one to hand the losing pool
   // to. Refund every stake instead of destroying it -- the alternative is a
   // market where everyone piles onto the obvious answer, the upset lands, and
-  // the entire pot silently vanishes.
+  // the entire pot silently vanishes. No fee on a refund: nothing was won.
   if (winningPool <= 0) return round2(bet.amount);
 
   if (bet.side !== market.winning_side) return 0;
 
   const shareOfLosingPool = (bet.amount / winningPool) * losingPool;
-  return round2(bet.amount + shareOfLosingPool);
+  const fee = shareOfLosingPool * BROKER_FEE_RATE;
+  return round2(bet.amount + shareOfLosingPool - fee);
+}
+
+/**
+ * The broker's fee withheld from a winning bet, for showing people what was
+ * taken. Zero for losing bets and for refunds.
+ */
+export function calculateFee(
+  bet: Pick<Bet, "amount" | "side">,
+  market: Pick<Market, "yes_pool" | "no_pool" | "winning_side">
+): number {
+  if (!market.winning_side || bet.side !== market.winning_side) return 0;
+
+  const winningPool = market.winning_side === "yes" ? market.yes_pool : market.no_pool;
+  const losingPool = market.winning_side === "yes" ? market.no_pool : market.yes_pool;
+  if (winningPool <= 0) return 0;
+
+  return round2((bet.amount / winningPool) * losingPool * BROKER_FEE_RATE);
 }
 
 /**
@@ -94,20 +132,28 @@ export function previewPayout(
   market: Pick<Market, "yes_pool" | "no_pool">,
   side: "yes" | "no",
   stake: number
-): { stake: number; profit: number; total: number; multiplier: number } {
+): {
+  stake: number;
+  profit: number;
+  fee: number;
+  total: number;
+  multiplier: number;
+} {
   if (!Number.isFinite(stake) || stake <= 0) {
-    return { stake: 0, profit: 0, total: 0, multiplier: 1 };
+    return { stake: 0, profit: 0, fee: 0, total: 0, multiplier: 1 };
   }
 
   const otherPool = side === "yes" ? market.no_pool : market.yes_pool;
   const sidePoolAfter = (side === "yes" ? market.yes_pool : market.no_pool) + stake;
 
   // Nobody on the other side yet means there's nothing to win -- you'd just
-  // get your own stake back.
-  const profit = otherPool > 0 ? round2((stake / sidePoolAfter) * otherPool) : 0;
+  // get your own stake back, and there's no fee on that.
+  const grossProfit = otherPool > 0 ? (stake / sidePoolAfter) * otherPool : 0;
+  const fee = round2(grossProfit * BROKER_FEE_RATE);
+  const profit = round2(grossProfit - fee);
   const total = round2(stake + profit);
 
-  return { stake: round2(stake), profit, total, multiplier: total / stake };
+  return { stake: round2(stake), profit, fee, total, multiplier: total / stake };
 }
 
 /** Round to 2 decimal places (credits behave like currency amounts). */

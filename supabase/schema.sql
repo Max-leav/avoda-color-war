@@ -12,7 +12,7 @@ create table public.users (
   id uuid primary key references auth.users(id) on delete cascade,
   username text unique not null,
   email text unique not null,
-  balance numeric(12,2) not null default 1000.00,  -- virtual credits, not money
+  balance numeric(12,2) not null default 0.00,  -- virtual credits, not money
   is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -150,16 +150,16 @@ grant all privileges on public.user_payment_info to service_role;
 create function public.handle_new_user()
 returns trigger as $$
 begin
+  -- New accounts start at zero. Credits come from an admin issuing them
+  -- (Admin -> adjust balance), not from signing up, so nobody can farm a
+  -- starting stack by registering a second address.
   insert into public.users (id, username, email, balance)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
     new.email,
-    1000.00
+    0.00
   );
-
-  insert into public.transactions (user_id, type, amount, description)
-  values (new.id, 'signup_bonus', 1000.00, 'Welcome bonus -- play-money credits');
 
   return new;
 end;
