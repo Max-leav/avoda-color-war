@@ -21,7 +21,7 @@ const FEE_PERCENT = Math.round(BROKER_FEE_RATE * 100);
  */
 
 const DEFAULT_CREDITS_HELP =
-  "Credits are handed out by me, Max Leavitt. They don't arrive automatically when you sign up. When I have received your venmo, @Max-leav, I will then give your account credits at a 1:1 ratio. At the end of Color War, all credits in your account will be payed back out via venmo at a 1:1 ratio.";
+  "Credits are handed out by me, Max Leavitt. They don't arrive automatically when you sign up. When I have received your venmo, @Max-leav, I will then give your account credits at a 1:1 ratio. Please make sure to include your username or email on the website in the venmo description so I know who to give credits to. At the end of Color War, all credits in your account will be payed back out via venmo at a 1:1 ratio.";
 
 const DEFAULT_PASSWORD_HELP =
   "If you need to reset your password, please send an email to \"max@kesame.com\" asking for a password reset. I will then send a reset code back to you which will be active for 1 hour. Then go to Sign in, tap \"Forgot your password?\", and enter your email with that code. You choose the new password yourself.";
