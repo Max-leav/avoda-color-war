@@ -14,11 +14,15 @@ import {
 
 export default function MarketDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const [market, setMarket] = useState<Market | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newCloseTime, setNewCloseTime] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleNote, setScheduleNote] = useState<string | null>(null);
 
   async function load() {
     const [{ data: m }, { data: b }] = await Promise.all([
@@ -37,6 +41,47 @@ export default function MarketDetailPage() {
   useEffect(() => {
     if (id) load();
   }, [id]);
+
+  async function updateSchedule(payload: { closeNow?: true; closeTime?: string }) {
+    setScheduleError(null);
+    setScheduleNote(null);
+
+    if (
+      payload.closeNow &&
+      !confirm("Close this market to new bets right now? This can't be undone.")
+    ) {
+      return;
+    }
+
+    setScheduling(true);
+    try {
+      const {
+        data: { session: freshSession },
+      } = await supabase.auth.getSession();
+      const res = await fetch(`/api/markets/${id}/schedule`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${freshSession?.access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Could not update the market.");
+
+      setNewCloseTime("");
+      setScheduleNote(
+        payload.closeNow
+          ? "Market closed. No new bets can be placed."
+          : "Close time updated."
+      );
+      await load();
+    } catch (e: any) {
+      setScheduleError(e.message);
+    } finally {
+      setScheduling(false);
+    }
+  }
 
   async function resolve(winningSide: "yes" | "no") {
     setError(null);
@@ -71,6 +116,18 @@ export default function MarketDetailPage() {
   const yes = impliedYesPrice(market);
   const no = impliedNoPrice(market);
   const isCreator = session?.user?.id === market.creator_id;
+  const canManage = !!session && (isCreator || !!profile?.is_admin);
+  const closedToBets = new Date(market.close_time).getTime() <= Date.now();
+  // Closed but not yet resolved -- the state manual closing creates a lot of.
+  const awaitingResult = closedToBets && !market.resolved;
+
+  // datetime-local wants "YYYY-MM-DDTHH:mm" in *local* time, and toISOString
+  // returns UTC, so slicing an ISO string here would silently shift the
+  // prefilled value by your timezone offset.
+  function toLocalInputValue(date: Date) {
+    const offsetMs = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+  }
 
   return (
     <div className="grid md:grid-cols-3 gap-8">
@@ -104,6 +161,54 @@ export default function MarketDetailPage() {
               {market.winning_side?.toUpperCase()}
             </span>{" "}
             won. Payouts have been credited to winning bettors.
+          </div>
+        )}
+
+        {awaitingResult && (
+          <div className="border border-brand/40 bg-brand/5 rounded-xl p-4 mb-6 text-sm text-ink">
+            Closed to new bets. Waiting on the result.
+          </div>
+        )}
+
+        {canManage && !market.resolved && !closedToBets && (
+          <div className="border border-border bg-surface rounded-xl p-4 mb-6">
+            <h2 className="font-display font-600 text-ink mb-1">Manage this market</h2>
+            <p className="text-xs text-muted mb-4 leading-relaxed">
+              Closes {new Date(market.close_time).toLocaleString()}. You can move that
+              or shut it early -- but only while it's still open, since reopening a
+              closed market would let people bet on something they might already know.
+            </p>
+
+            <button
+              onClick={() => updateSchedule({ closeNow: true })}
+              disabled={scheduling}
+              className="w-full bg-no/10 border border-no text-no rounded-lg py-2 text-sm font-600 hover:bg-no/20 transition-colors disabled:opacity-40 mb-4"
+            >
+              {scheduling ? "Working…" : "Close now"}
+            </button>
+
+            <label className="block text-xs uppercase tracking-wide text-muted mb-1">
+              Or move the close time
+            </label>
+            <input
+              type="datetime-local"
+              value={newCloseTime || toLocalInputValue(new Date(market.close_time))}
+              min={toLocalInputValue(new Date())}
+              onChange={(e) => setNewCloseTime(e.target.value)}
+              className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-ink focus-ring mb-2"
+            />
+            <button
+              onClick={() =>
+                updateSchedule({ closeTime: new Date(newCloseTime).toISOString() })
+              }
+              disabled={scheduling || !newCloseTime}
+              className="w-full border border-border text-ink rounded-lg py-2 text-sm font-600 hover:border-brand transition-colors disabled:opacity-40"
+            >
+              Update close time
+            </button>
+
+            {scheduleError && <p className="text-xs text-no mt-2">{scheduleError}</p>}
+            {scheduleNote && <p className="text-xs text-yes mt-2">{scheduleNote}</p>}
           </div>
         )}
 

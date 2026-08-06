@@ -5,7 +5,9 @@ import { formatProbability, impliedYesPrice } from "@/lib/calculations";
 export default function MarketCard({ market }: { market: Market }) {
   const yes = impliedYesPrice(market);
   const totalPool = market.yes_pool + market.no_pool;
-  const closesSoon = new Date(market.close_time).getTime() - Date.now() < 1000 * 60 * 60 * 24;
+  const msUntilClose = new Date(market.close_time).getTime() - Date.now();
+  const closed = msUntilClose <= 0;
+  const closesSoon = !closed && msUntilClose < 1000 * 60 * 60 * 24;
 
   return (
     <Link
@@ -32,6 +34,8 @@ export default function MarketCard({ market }: { market: Market }) {
         <span>
           {market.resolved
             ? `Resolved: ${market.winning_side?.toUpperCase()}`
+            : closed
+            ? "Closed — awaiting result"
             : closesSoon
             ? "Closes soon"
             : `Closes ${new Date(market.close_time).toLocaleDateString()}`}

@@ -25,7 +25,16 @@ export default function HomePage() {
     loadMarkets();
   }, []);
 
-  const open = markets.filter((m) => !m.resolved);
+  // Three states now that markets can be closed by hand: taking bets,
+  // closed but not yet called, and settled. Lumping the middle group in with
+  // "open" would invite people to click in and find betting already shut.
+  const now = Date.now();
+  const open = markets.filter(
+    (m) => !m.resolved && new Date(m.close_time).getTime() > now
+  );
+  const awaitingResult = markets.filter(
+    (m) => !m.resolved && new Date(m.close_time).getTime() <= now
+  );
   const resolved = markets.filter((m) => m.resolved);
 
   return (
@@ -59,6 +68,20 @@ export default function HomePage() {
           <MarketCard key={m.id} market={m} />
         ))}
       </div>
+
+      {awaitingResult.length > 0 && (
+        <>
+          <h2 className="font-display text-xl font-700 text-ink mb-1">Awaiting results</h2>
+          <p className="text-muted text-sm mb-4">
+            Closed to new bets, outcome not called yet.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-4 mb-12">
+            {awaitingResult.map((m) => (
+              <MarketCard key={m.id} market={m} />
+            ))}
+          </div>
+        </>
+      )}
 
       {resolved.length > 0 && (
         <>
