@@ -34,32 +34,21 @@ export default function PayoutExplainer({ className = "" }: { className?: string
         <p>
           <span className="text-ink">Your odds aren't locked in.</span> The rate shown
           on a market is what it pays right now, and it keeps moving until betting
-          closes. More money joining your side shrinks your share; more money on the
+          closes. More money joining your side shrinks your share. Consequently, more money on the
           other side grows it. What you actually collect is worked out from the pools
-          as they stand when the market closes — not from the number that was showing
+          as they stand when the market closes, NOT from the number that was showing
           when you placed your bet.
         </p>
 
         <p>
-          Your own bet moves it too. Staking 100 on a market showing 1.95× won't pay
+          Your own bet that you place also moved the payout. Staking 100 on a market showing 1.95× won't pay
           1.95×, because your 100 joins the pool you're backing and dilutes it. The
-          bet form prices your specific stake as you type it, and that figure is the
-          honest one.
-        </p>
-
-        <p>
-          The house keeps <span className="text-ink">{FEE_PERCENT}% of winnings</span> as
-          a broker's fee. It comes out of what you win, never out of your stake coming
-          back — so a win is always a win, even a narrow one.
+          bet form prices and displays what the payout would be after your specific stake as you type it.
         </p>
 
         <p>
           If nobody bet the winning side, there's no one to pay, so every stake is
-          refunded in full with no fee taken.
-        </p>
-
-        <p className="text-[11px] pt-1 border-t border-border">
-          Credits are for the game only. They aren't currency and carry no cash value.
+          refunded in full.
         </p>
       </div>
     </details>
