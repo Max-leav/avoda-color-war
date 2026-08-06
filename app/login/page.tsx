@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { normalizeVenmoHandle, validateVenmoHandle } from "@/lib/payment";
@@ -75,20 +76,33 @@ export default function LoginPage() {
       </h1>
 
       {mode === "forgot" && !sent && (
-        <p className="text-muted text-sm mb-6">
-          Enter your email and we'll send you a link to set a new password.
-        </p>
+        <div className="mb-6">
+          <p className="text-muted text-sm mb-3">
+            Enter your email and we&apos;ll send you a reset link.
+          </p>
+          <p className="text-xs text-muted leading-relaxed border border-border bg-surface rounded-lg p-3">
+            Reset emails only reach a few addresses on this setup, so if nothing
+            arrives, ask an admin — they can reset your password or send you a sign-in
+            link directly. That always works.
+          </p>
+        </div>
       )}
       {mode !== "forgot" && <div className="mb-4" />}
 
       {mode === "forgot" && sent && (
         <div className="border border-border bg-surface rounded-xl p-5 mb-4">
           <p className="text-sm text-ink mb-2">Check your email</p>
-          <p className="text-xs text-muted leading-relaxed">
-            If an account exists for {email}, a reset link is on its way. It expires
-            after a while and only works once, so use it soon. Check spam if it doesn't
-            show up in a couple of minutes.
+          <p className="text-xs text-muted leading-relaxed mb-4">
+            If an account exists for {email}, a reset email is on its way with a
+            6-digit code. Enter it on the next screen. Check spam if it doesn&apos;t
+            arrive in a couple of minutes.
           </p>
+          <Link
+            href={`/reset-password?email=${encodeURIComponent(email)}`}
+            className="block w-full text-center bg-brand text-bg font-display font-600 rounded-lg py-2.5 hover:opacity-90 transition-opacity"
+          >
+            Enter my code
+          </Link>
         </div>
       )}
 

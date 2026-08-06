@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Transaction, Bet, Market } from "@/lib/types";
 import { formatCredits, formatProbability } from "@/lib/calculations";
 import PaymentInfoForm from "@/components/PaymentInfoForm";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
 import { sideLabel } from "@/lib/labels";
 
 export default function ProfilePage() {
@@ -47,6 +48,8 @@ export default function ProfilePage() {
       </p>
 
       <PaymentInfoForm />
+
+      <ChangePasswordForm />
 
       <h2 className="font-display font-600 text-ink mb-3">Your bets</h2>
       <div className="border border-border rounded-xl divide-y divide-border overflow-hidden mb-8">

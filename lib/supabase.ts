@@ -8,7 +8,17 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // These are the library defaults, spelled out because the app depends on
+    // them: the session is written to localStorage and refreshed in the
+    // background, so signing in once survives closing the tab, and a one-time
+    // sign-in link keeps working long after the link itself has expired.
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
 
 // ----------------------------------------------------------------------------
 // SERVER CLIENT (service role)

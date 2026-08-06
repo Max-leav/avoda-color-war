@@ -12,6 +12,10 @@ export default function AdminPage() {
   const [results, setResults] = useState<AdminUserResult[]>([]);
   const [target, setTarget] = useState<AdminUserResult | null>(null);
   const [searching, setSearching] = useState(false);
+  const [access, setAccess] = useState<
+    { mode: string; username: string; code?: string; link?: string } | null
+  >(null);
+  const [accessWorking, setAccessWorking] = useState(false);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -22,6 +26,37 @@ export default function AdminPage() {
   // payment details are RLS-restricted to their owner -- the browser client
   // genuinely can't read another user's Venmo handle, by design. The route
   // re-checks that the caller is an admin before returning anything.
+  // Gets a locked-out camper back in without touching email. Supabase's
+  // default sender only delivers to the project org's own addresses, so an
+  // emailed reset never reaches them in the first place.
+  async function restoreAccess(mode: "code" | "link") {
+    if (!target) return;
+    setError(null);
+    setMessage(null);
+    setAccess(null);
+    setAccessWorking(true);
+    try {
+      const {
+        data: { session: freshSession },
+      } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/user-access", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${freshSession?.access_token}`,
+        },
+        body: JSON.stringify({ userId: target.id, mode }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Could not update access.");
+      setAccess(body);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setAccessWorking(false);
+    }
+  }
+
   async function search() {
     setError(null);
     setMessage(null);
@@ -44,6 +79,7 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(body.error || "Search failed.");
 
       setResults(body.results as AdminUserResult[]);
+      setAccess(null);
       if (body.results.length === 0) setMessage("No users matched that.");
     } catch (e: any) {
       setError(e.message);
@@ -174,6 +210,59 @@ export default function AdminPage() {
                 {target.venmo_handle ? `@${target.venmo_handle}` : "— not provided"}
               </span>
             </div>
+          </div>
+
+          <div className="border border-border rounded-lg bg-bg p-3 mb-4">
+            <p className="text-xs text-muted mb-2 leading-relaxed">
+              Locked out? Neither of these sends an email — you hand the result over
+              yourself, and neither lets you see or choose their password.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => restoreAccess("code")}
+                disabled={accessWorking}
+                className="flex-1 border border-border rounded-lg py-2 text-xs text-ink hover:border-brand transition-colors disabled:opacity-40"
+              >
+                Reset code
+              </button>
+              <button
+                onClick={() => restoreAccess("link")}
+                disabled={accessWorking}
+                className="flex-1 border border-border rounded-lg py-2 text-xs text-ink hover:border-brand transition-colors disabled:opacity-40"
+              >
+                Sign-in link
+              </button>
+            </div>
+
+            {access?.code && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-[11px] text-muted mb-1">
+                  Reset code for {access.username}. Read it out, then send them to the
+                  reset page — they enter their email and this code and pick their own
+                  password. Single use, and it expires.
+                </p>
+                <p className="font-mono text-2xl tracking-[0.25em] text-brand select-all">
+                  {access.code}
+                </p>
+              </div>
+            )}
+
+            {access?.link && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-[11px] text-muted mb-1">
+                  One-time sign-in link for {access.username}. Text it to them. It
+                  works once, and signs them in for good — the session survives closing
+                  the tab.
+                </p>
+                <textarea
+                  readOnly
+                  value={access.link}
+                  rows={3}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="w-full bg-surface border border-border rounded-lg px-2 py-1.5 font-mono text-[11px] text-ink focus-ring"
+                />
+              </div>
+            )}
           </div>
 
           <label className="block text-xs uppercase tracking-wide text-muted mb-1">

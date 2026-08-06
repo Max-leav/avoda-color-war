@@ -194,27 +194,42 @@ Users can add or change it later on their profile page.
 
 ## Password resets
 
-The flow is: `/login` → "Forgot your password?" → Supabase emails a link →
-`/reset-password` → new password saved via `supabase.auth.updateUser()`.
+Two ways in, and the code is the one to rely on.
 
-Two things have to be set in the Supabase dashboard or the emailed link will
-bounce, and the failure looks like a bug in the app rather than config:
+**Code (recommended).** `/login` -> "Forgot your password?" -> Supabase emails a
+6-digit code -> "Enter my code" -> `/reset-password`. This needs one dashboard
+change to work:
 
-1. **Authentication → URL Configuration → Site URL** — set to your deployed
-   origin (e.g. `https://your-app.vercel.app`), not `localhost`.
-2. **Authentication → URL Configuration → Redirect URLs** — add
-   `https://your-app.vercel.app/reset-password`. Supabase refuses to redirect
-   anywhere not on this allowlist. Add `http://localhost:3000/reset-password`
-   too if you test resets locally.
+**Authentication -> Emails -> Reset Password**, put `{{ .Token }}` in the
+template. Something like:
 
-Reset links are single-use, time-limited, and have to be opened in the same
-browser they were requested from (the PKCE code verifier lives in that
-browser's storage). The reset page reports each of these cases distinctly.
+```html
+<h2>Reset your password</h2>
+<p>Your code is:</p>
+<h1>{{ .Token }}</h1>
+<p>Enter it on the reset page. Ignore this email if you didn't ask for it.</p>
+```
 
-Supabase's built-in email sender is rate-limited to a few messages per hour on
-the free tier, which is fine for a camp-sized group but will silently throttle
-you during heavy testing. Set up custom SMTP under Authentication → Emails if
-you hit it.
+Leaving the link out entirely is the point. `{{ .ConfirmationURL }}` and
+`{{ .Token }}` are the same single-use token, so if a scanner pre-fetches the
+link, the code dies with it.
+
+**Link (fallback).** Still works, and still needs
+`https://your-app.vercel.app/reset-password` in **Authentication -> URL
+Configuration -> Redirect URLs** plus a Site URL that isn't localhost. When the
+link fails, the reset page falls through to the code form and explains why.
+
+Why the link is unreliable: it only works if that exact redirect URL is on the
+allowlist, it must be opened in the same browser that requested it (the PKCE
+verifier lives in that browser's storage), and it's single-use -- so any email
+scanner that pre-fetches URLs (Outlook Safe Links, corporate antivirus) burns
+the token before the user clicks, producing "link expired" seconds after it was
+sent. A typed code has no URL to pre-fetch, works on any device, and needs no
+allowlist.
+
+Supabase's built-in sender is rate-limited to a few messages per hour on the
+free tier. Fine for a camp, but it will throttle you during heavy testing. Set
+up custom SMTP under Authentication -> Emails if you hit it.
 
 ## Credits and the house cut
 

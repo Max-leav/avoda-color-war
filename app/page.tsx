@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Market } from "@/lib/types";
 import MarketCard from "@/components/MarketCard";
-import Ticker from "@/components/Ticker";
 import { useAuth } from "@/components/AuthProvider";
 import { useNow } from "@/lib/useNow";
 
@@ -43,10 +42,6 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="-mx-4 -mt-8 mb-8">
-        <Ticker markets={open} />
-      </div>
-
       <h1 className="font-display text-3xl font-700 text-ink mb-1">Open markets</h1>
       <p className="text-muted text-sm mb-6">
         All credits are play-money. Prices move as bets come in.
