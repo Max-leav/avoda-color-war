@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { User } from "@/lib/types";
@@ -32,6 +33,39 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Password-reset links don't always arrive at /reset-password. Supabase
+  // redirects to the project's Site URL whenever redirectTo isn't on the
+  // allowlist, and it sends failures (expired, already-used) to the Site URL
+  // regardless. Either way the user lands on "/" with the whole story sitting
+  // in the URL fragment and nothing on that page looking at it, which reads
+  // as "clicking the link did nothing."
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (pathname === "/reset-password") return;
+
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+    const errorDescription = hashParams.get("error_description");
+    if (errorDescription) {
+      const errorCode = hashParams.get("error_code") ?? "";
+      // Hand it to the reset page, which already knows how to explain a bad
+      // link, rather than dropping the user on a homepage that says nothing.
+      router.replace(
+        `/reset-password?error_description=${encodeURIComponent(errorDescription)}` +
+          (errorCode ? `&error_code=${encodeURIComponent(errorCode)}` : "")
+      );
+      return;
+    }
+
+    // A working recovery link that landed on the wrong page: the tokens are
+    // in the fragment, so carry it across intact.
+    if (hashParams.get("type") === "recovery") {
+      router.replace(`/reset-password${window.location.hash}`);
+    }
+  }, [pathname, router]);
 
   async function loadProfile(userId: string) {
     // maybeSingle() instead of single(): "no row" is an expected state here
@@ -98,7 +132,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // Fired when a recovery link is processed. detectSessionInUrl may have
+      // already stripped the fragment by the time the effect above runs, so
+      // this is the backstop: the session a recovery link creates is only
+      // good for setting a new password, so send them where that happens.
+      if (event === "PASSWORD_RECOVERY" && window.location.pathname !== "/reset-password") {
+        router.replace("/reset-password");
+      }
+
       setSession(newSession);
       if (newSession?.user?.id) {
         loadProfile(newSession.user.id);
@@ -109,7 +151,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     });
 
     return () => listener.subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
   return (
     <AuthContext.Provider value={{ session, profile, loading, profileError, refreshProfile }}>
