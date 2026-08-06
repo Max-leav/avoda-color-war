@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Market, Bet } from "@/lib/types";
 import { useAuth } from "@/components/AuthProvider";
 import BetForm from "@/components/BetForm";
+import YourPosition from "@/components/YourPosition";
 import {
   formatProbability,
   impliedYesPrice,
@@ -185,6 +186,8 @@ export default function MarketDetailPage() {
             <div className="text-[10px] uppercase tracking-wide text-muted">credits staked</div>
           </div>
         </div>
+
+        <YourPosition market={market} />
 
         {market.resolved && (
           <div className="border border-border bg-surface rounded-xl p-4 mb-6 text-sm">
