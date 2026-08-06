@@ -171,3 +171,27 @@ run the migration block at the bottom of `supabase/schema.sql` first.
   worth deciding informally with whoever you invite in.
 - Free-tier Supabase pauses projects after a week of inactivity; log in
   every so often or upgrade if that's a problem.
+
+## Password resets
+
+The flow is: `/login` → "Forgot your password?" → Supabase emails a link →
+`/reset-password` → new password saved via `supabase.auth.updateUser()`.
+
+Two things have to be set in the Supabase dashboard or the emailed link will
+bounce, and the failure looks like a bug in the app rather than config:
+
+1. **Authentication → URL Configuration → Site URL** — set to your deployed
+   origin (e.g. `https://your-app.vercel.app`), not `localhost`.
+2. **Authentication → URL Configuration → Redirect URLs** — add
+   `https://your-app.vercel.app/reset-password`. Supabase refuses to redirect
+   anywhere not on this allowlist. Add `http://localhost:3000/reset-password`
+   too if you test resets locally.
+
+Reset links are single-use, time-limited, and have to be opened in the same
+browser they were requested from (the PKCE code verifier lives in that
+browser's storage). The reset page reports each of these cases distinctly.
+
+Supabase's built-in email sender is rate-limited to a few messages per hour on
+the free tier, which is fine for a camp-sized group but will silently throttle
+you during heavy testing. Set up custom SMTP under Authentication → Emails if
+you hit it.

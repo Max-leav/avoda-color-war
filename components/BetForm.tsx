@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { Market } from "@/lib/types";
-import { formatProbability, impliedNoPrice, impliedYesPrice } from "@/lib/calculations";
+import {
+  formatCredits,
+  formatProbability,
+  impliedNoPrice,
+  impliedYesPrice,
+  previewPayout,
+} from "@/lib/calculations";
 
 export default function BetForm({
   market,
@@ -21,6 +27,15 @@ export default function BetForm({
 
   const closed = market.resolved || new Date(market.close_time).getTime() <= Date.now();
   const price = side === "yes" ? impliedYesPrice(market) : impliedNoPrice(market);
+
+  // Live preview state. Recomputed on every keystroke, before anything is
+  // submitted, so you can see what a stake pays without committing to it.
+  const parsed = Number(amount);
+  const stake = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  const balance = profile?.balance ?? 0;
+  const overdrawn = !!profile && stake > balance;
+  const preview = previewPayout(market, side, stake);
+  const otherPool = side === "yes" ? market.no_pool : market.yes_pool;
 
   async function placeBet() {
     setError(null);
@@ -116,7 +131,56 @@ export default function BetForm({
 
       {profile && (
         <p className="text-xs text-muted mb-3">
-          Balance: <span className="font-mono">{profile.balance.toLocaleString()}</span> credits
+          Balance: <span className="font-mono">{formatCredits(balance)}</span> credits
+        </p>
+      )}
+
+      {stake > 0 && (
+        <div className="border border-border rounded-lg bg-bg p-3 mb-3">
+          <div className="flex items-baseline justify-between text-xs mb-1.5">
+            <span className="text-muted">Your wager</span>
+            <span className="font-mono tabular-nums text-ink">
+              {formatCredits(preview.stake)}
+            </span>
+          </div>
+
+          <div className="flex items-baseline justify-between text-xs mb-2">
+            <span className="text-muted">
+              Return if {side.toUpperCase()} wins
+            </span>
+            <span
+              className={`font-mono tabular-nums ${
+                preview.profit > 0 ? "text-yes" : "text-muted"
+              }`}
+            >
+              +{formatCredits(preview.profit)}
+            </span>
+          </div>
+
+          <div className="flex items-baseline justify-between pt-2 border-t border-border">
+            <span className="text-xs text-muted">You get back</span>
+            <span className="font-mono tabular-nums text-lg text-brand">
+              {formatCredits(preview.total)}{" "}
+              <span className="text-xs text-muted">
+                ({preview.multiplier.toFixed(2)}×)
+              </span>
+            </span>
+          </div>
+
+          <p className="text-[11px] text-muted mt-2 leading-relaxed">
+            {otherPool <= 0
+              ? `No credits on ${side === "yes" ? "NO" : "YES"} yet, so there's nothing to win
+                 off this bet -- you'd just get your stake back. It grows as bets land on
+                 the other side.`
+              : `Estimate at the current pool sizes, and it already accounts for your own
+                 stake joining the pool. It moves as more bets come in.`}
+          </p>
+        </div>
+      )}
+
+      {overdrawn && (
+        <p className="text-xs text-no mb-3">
+          That's more than your {formatCredits(balance)} credits.
         </p>
       )}
 
@@ -124,7 +188,7 @@ export default function BetForm({
 
       <button
         onClick={placeBet}
-        disabled={submitting || !session}
+        disabled={submitting || !session || overdrawn}
         className="w-full bg-brand text-bg font-display font-600 rounded-lg py-3 hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {!session
