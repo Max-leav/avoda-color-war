@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { MAX_LABEL_LENGTH } from "@/lib/labels";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function NewMarketPage() {
@@ -12,6 +13,8 @@ export default function NewMarketPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [closeTime, setCloseTime] = useState("");
+  const [yesLabel, setYesLabel] = useState("");
+  const [noLabel, setNoLabel] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +75,7 @@ export default function NewMarketPage() {
       <h1 className="font-display text-2xl font-700 text-ink mb-6">Create a market</h1>
 
       <label className="block text-xs uppercase tracking-wide text-muted mb-1">
-        Question (resolves YES or NO)
+        Question (resolves to one of two sides)
       </label>
       <input
         value={title}
@@ -91,6 +94,30 @@ export default function NewMarketPage() {
         rows={4}
         className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-ink focus-ring mb-4"
       />
+
+      <label className="block text-xs uppercase tracking-wide text-muted mb-1">
+        Name the two sides (optional)
+      </label>
+      <p className="text-[11px] text-muted mb-2 leading-relaxed">
+        Leave blank for YES and NO. Use team names for a head-to-head, e.g. Blue and
+        Gold. Every market has exactly two sides.
+      </p>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <input
+          value={yesLabel}
+          onChange={(e) => setYesLabel(e.target.value)}
+          maxLength={MAX_LABEL_LENGTH}
+          placeholder="YES"
+          className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-ink focus-ring"
+        />
+        <input
+          value={noLabel}
+          onChange={(e) => setNoLabel(e.target.value)}
+          maxLength={MAX_LABEL_LENGTH}
+          placeholder="NO"
+          className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-ink focus-ring"
+        />
+      </div>
 
       <label className="block text-xs uppercase tracking-wide text-muted mb-1">
         Closes at
@@ -113,8 +140,8 @@ export default function NewMarketPage() {
       </button>
 
       <p className="text-[11px] text-muted mt-4 leading-relaxed">
-        As the creator, you'll be responsible for resolving this market to YES
-        or NO once the outcome is known — do that from the market page.
+        As the creator, you'll be responsible for resolving this market to one side
+        or the other once the outcome is known — do that from the market page.
       </p>
     </div>
   );

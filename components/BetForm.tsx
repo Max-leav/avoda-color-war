@@ -5,6 +5,7 @@ import { useAuth } from "./AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { Market } from "@/lib/types";
 import { formatCloseTime } from "@/lib/time";
+import { sideLabel, winningLabel } from "@/lib/labels";
 import {
   formatCredits,
   formatProbability,
@@ -93,7 +94,7 @@ export default function BetForm({
         {market.voided
           ? "This market was voided. Every bet was refunded in full."
           : market.resolved
-          ? `This market resolved to ${market.winning_side?.toUpperCase()}. Betting is closed.`
+          ? `This market resolved to ${winningLabel(market)}. Betting is closed.`
           : `Closed to new bets as of ${formatCloseTime(market.close_time)}.`}
       </div>
     );
@@ -110,7 +111,7 @@ export default function BetForm({
               : "border-border text-muted hover:text-ink"
           }`}
         >
-          YES · {formatProbability(impliedYesPrice(market))}
+          {sideLabel(market, "yes")} · {formatProbability(impliedYesPrice(market))}
           <span className="block text-[11px] font-mono opacity-80 mt-0.5">
             pays {formatMultiplier(currentPayoutMultiplier(market, "yes"))}
           </span>
@@ -123,7 +124,7 @@ export default function BetForm({
               : "border-border text-muted hover:text-ink"
           }`}
         >
-          NO · {formatProbability(impliedNoPrice(market))}
+          {sideLabel(market, "no")} · {formatProbability(impliedNoPrice(market))}
           <span className="block text-[11px] font-mono opacity-80 mt-0.5">
             pays {formatMultiplier(currentPayoutMultiplier(market, "no"))}
           </span>
@@ -160,7 +161,7 @@ export default function BetForm({
 
           <div className="flex items-baseline justify-between text-xs mb-2">
             <span className="text-muted">
-              Return if {side.toUpperCase()} wins
+              Return if {sideLabel(market, side)} wins
             </span>
             <span
               className={`font-mono tabular-nums ${
@@ -183,7 +184,7 @@ export default function BetForm({
 
           <p className="text-[11px] text-muted mt-2 leading-relaxed">
             {otherPool <= 0
-              ? `No credits on ${side === "yes" ? "NO" : "YES"} yet, so there's nothing to win
+              ? `No credits on ${sideLabel(market, side === "yes" ? "no" : "yes")} yet, so there's nothing to win
                  off this bet -- you'd just get your stake back. It grows as bets land on
                  the other side.`
               : `Estimate at the current pool sizes, and it already accounts for your own
@@ -209,7 +210,7 @@ export default function BetForm({
           ? "Sign in to bet"
           : submitting
           ? "Placing..."
-          : `Place ${side.toUpperCase()} bet at ${formatProbability(price)}`}
+          : `Place ${sideLabel(market, side)} bet at ${formatProbability(price)}`}
       </button>
 
       <p className="text-[11px] text-muted mt-3 leading-relaxed">

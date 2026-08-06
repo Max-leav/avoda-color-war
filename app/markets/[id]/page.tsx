@@ -17,6 +17,7 @@ import {
   formatMultiplier,
 } from "@/lib/calculations";
 import { formatCloseTime, timeUntilClose } from "@/lib/time";
+import { MAX_LABEL_LENGTH, sideLabel, winningLabel } from "@/lib/labels";
 import { useNow } from "@/lib/useNow";
 
 export default function MarketDetailPage() {
@@ -31,8 +32,19 @@ export default function MarketDetailPage() {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleNote, setScheduleNote] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState("");
+  const [yesLabelDraft, setYesLabelDraft] = useState("");
+  const [noLabelDraft, setNoLabelDraft] = useState("");
+  const [renaming, setRenaming] = useState(false);
   const [voiding, setVoiding] = useState(false);
   const now = useNow();
+
+  // Seed the rename inputs from the market once it arrives, so the fields
+  // show the current names rather than starting empty.
+  useEffect(() => {
+    if (!market) return;
+    setYesLabelDraft(market.yes_label ?? "");
+    setNoLabelDraft(market.no_label ?? "");
+  }, [market?.id, market?.yes_label, market?.no_label]);
 
   async function load() {
     const [{ data: m }, { data: b }] = await Promise.all([
@@ -51,6 +63,34 @@ export default function MarketDetailPage() {
   useEffect(() => {
     if (id) load();
   }, [id]);
+
+  async function renameSides() {
+    setScheduleError(null);
+    setScheduleNote(null);
+    setRenaming(true);
+    try {
+      const {
+        data: { session: freshSession },
+      } = await supabase.auth.getSession();
+      const res = await fetch(`/api/markets/${id}/labels`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${freshSession?.access_token}`,
+        },
+        body: JSON.stringify({ yesLabel: yesLabelDraft, noLabel: noLabelDraft }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Could not rename the sides.");
+
+      setScheduleNote("Side names updated.");
+      await load();
+    } catch (e: any) {
+      setScheduleError(e.message);
+    } finally {
+      setRenaming(false);
+    }
+  }
 
   async function voidMarket() {
     setScheduleError(null);
@@ -224,14 +264,14 @@ export default function MarketDetailPage() {
         <div className="flex gap-6 mb-6">
           <div>
             <div className="font-mono text-3xl font-600 text-yes">{formatProbability(yes)}</div>
-            <div className="text-[10px] uppercase tracking-wide text-muted">YES</div>
+            <div className="text-[10px] uppercase tracking-wide text-muted">{sideLabel(market, "yes")}</div>
             <div className="font-mono text-xs text-muted mt-1">
               pays {formatMultiplier(yesPays)}
             </div>
           </div>
           <div>
             <div className="font-mono text-3xl font-600 text-no">{formatProbability(no)}</div>
-            <div className="text-[10px] uppercase tracking-wide text-muted">NO</div>
+            <div className="text-[10px] uppercase tracking-wide text-muted">{sideLabel(market, "no")}</div>
             <div className="font-mono text-xs text-muted mt-1">
               pays {formatMultiplier(noPays)}
             </div>
@@ -263,7 +303,7 @@ export default function MarketDetailPage() {
           <div className="border border-border bg-surface rounded-xl p-4 mb-6 text-sm">
             Resolved:{" "}
             <span className={market.winning_side === "yes" ? "text-yes" : "text-no"}>
-              {market.winning_side?.toUpperCase()}
+              {winningLabel(market)}
             </span>{" "}
             won.{" "}
             {isRefundedMarket(market)
@@ -320,6 +360,39 @@ export default function MarketDetailPage() {
               </>
             )}
 
+            <div className="mt-5 pt-4 border-t border-border">
+              <label className="block text-xs uppercase tracking-wide text-muted mb-1">
+                Name the two sides
+              </label>
+              <p className="text-[11px] text-muted mb-2 leading-relaxed">
+                Blank means YES and NO. Bets already placed follow the rename — the
+                sides themselves don't change, only what they're called.
+              </p>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <input
+                  value={yesLabelDraft}
+                  onChange={(e) => setYesLabelDraft(e.target.value)}
+                  maxLength={MAX_LABEL_LENGTH}
+                  placeholder="YES"
+                  className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-ink focus-ring"
+                />
+                <input
+                  value={noLabelDraft}
+                  onChange={(e) => setNoLabelDraft(e.target.value)}
+                  maxLength={MAX_LABEL_LENGTH}
+                  placeholder="NO"
+                  className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-ink focus-ring"
+                />
+              </div>
+              <button
+                onClick={renameSides}
+                disabled={renaming}
+                className="w-full border border-border text-ink rounded-lg py-2 text-sm font-600 hover:border-brand transition-colors disabled:opacity-40"
+              >
+                {renaming ? "Saving…" : "Save side names"}
+              </button>
+            </div>
+
             {/* Voiding stays available after close: an event can get called
                 off once betting has shut but before anyone knows a result. */}
             <div className="mt-5 pt-4 border-t border-border">
@@ -358,14 +431,14 @@ export default function MarketDetailPage() {
                 disabled={resolving}
                 className="flex-1 bg-yes/10 border border-yes text-yes rounded-lg py-2 text-sm font-600 hover:bg-yes/20 transition-colors disabled:opacity-40"
               >
-                Resolve YES
+                Resolve {sideLabel(market, "yes")}
               </button>
               <button
                 onClick={() => resolve("no")}
                 disabled={resolving}
                 className="flex-1 bg-no/10 border border-no text-no rounded-lg py-2 text-sm font-600 hover:bg-no/20 transition-colors disabled:opacity-40"
               >
-                Resolve NO
+                Resolve {sideLabel(market, "no")}
               </button>
             </div>
             {error && <p className="text-xs text-no mt-2">{error}</p>}
@@ -380,7 +453,7 @@ export default function MarketDetailPage() {
           {bets.map((b) => (
             <div key={b.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
               <span className={b.side === "yes" ? "text-yes" : "text-no"}>
-                {b.side.toUpperCase()}
+                {sideLabel(market, b.side)}
               </span>
               <span className="font-mono text-ink">{b.amount.toLocaleString()} cr</span>
               <span className="font-mono text-muted text-xs">

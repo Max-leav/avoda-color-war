@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { Bet, Market } from "@/lib/types";
+import { sideLabel, winningLabel } from "@/lib/labels";
 import {
   BROKER_FEE_RATE,
   calculatePayout,
@@ -108,7 +109,7 @@ export default function YourPosition({ market }: { market: Market }) {
             className="flex items-center justify-between text-sm mb-2"
           >
             <span className={p.side === "yes" ? "text-yes" : "text-no"}>
-              {p.side.toUpperCase()}
+              {sideLabel(market, p.side)}
               {refunded
                 ? " · refunded"
                 : p.side === market.winning_side
@@ -136,7 +137,7 @@ export default function YourPosition({ market }: { market: Market }) {
           {market.voided
             ? "This market was voided, so every stake came back in full. Already in your balance."
             : refunded
-            ? `Nobody bet ${market.winning_side?.toUpperCase()}, so every stake was returned
+            ? `Nobody bet ${winningLabel(market)}, so every stake was returned
                in full. Already back in your balance.`
             : "Already credited to your balance when the market resolved."}
         </p>
@@ -159,7 +160,7 @@ export default function YourPosition({ market }: { market: Market }) {
         <div key={p.side} className="mb-3 last:mb-0">
           <div className="flex items-center justify-between text-sm mb-1">
             <span className={p.side === "yes" ? "text-yes" : "text-no"}>
-              {p.side.toUpperCase()}
+              {sideLabel(market, p.side)}
             </span>
             <span className="font-mono text-muted text-xs">
               {formatCredits(p.staked)} staked
@@ -167,7 +168,7 @@ export default function YourPosition({ market }: { market: Market }) {
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xs text-muted">
-              If {p.side.toUpperCase()} wins
+              If {sideLabel(market, p.side)} wins
             </span>
             <span className="font-mono tabular-nums text-brand">
               {formatCredits(p.returns)}

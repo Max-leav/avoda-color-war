@@ -17,6 +17,8 @@ export type Market = {
   winning_side: "yes" | "no" | null;
   voided: boolean;
   void_reason: string | null;
+  yes_label: string | null;
+  no_label: string | null;
   yes_pool: number;
   no_pool: number;
   created_at: string;

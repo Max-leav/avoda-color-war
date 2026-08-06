@@ -29,6 +29,10 @@ create table public.markets (
   -- outcome" and "this never happened" have to stay distinguishable.
   voided boolean not null default false,
   void_reason text,
+  -- Display names for the two sides (e.g. team names). Null means YES / NO.
+  -- The stored side values are always 'yes' and 'no' regardless.
+  yes_label text check (yes_label is null or char_length(yes_label) between 1 and 20),
+  no_label text check (no_label is null or char_length(no_label) between 1 and 20),
   yes_pool numeric(12,2) not null default 0,
   no_pool numeric(12,2) not null default 0,
   created_at timestamptz not null default now()

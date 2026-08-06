@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getServiceClient } from "@/lib/supabase";
+import { normalizeSideLabel, validateSideLabel } from "@/lib/labels";
 
 // ============================================================================
 // POST /api/markets
@@ -10,13 +11,39 @@ import { getServiceClient } from "@/lib/supabase";
 // ============================================================================
 export async function POST(req: NextRequest) {
   try {
-    const { title, description, closeTime } = await req.json();
+    const { title, description, closeTime, yesLabel, noLabel } = await req.json();
 
     if (!title || typeof title !== "string" || title.trim().length < 4) {
       return NextResponse.json({ error: "Title must be at least 4 characters." }, { status: 400 });
     }
     if (!closeTime || new Date(closeTime).getTime() <= Date.now()) {
       return NextResponse.json({ error: "Close time must be in the future." }, { status: 400 });
+    }
+
+    // Side names are optional; blank means the market reads YES / NO.
+    for (const label of [yesLabel, noLabel]) {
+      if (label === undefined || label === null) continue;
+      if (typeof label !== "string") {
+        return NextResponse.json({ error: "Side names must be text." }, { status: 400 });
+      }
+      const labelError = validateSideLabel(label);
+      if (labelError) return NextResponse.json({ error: labelError }, { status: 400 });
+    }
+
+    const cleanYesLabel = normalizeSideLabel(yesLabel);
+    const cleanNoLabel = normalizeSideLabel(noLabel);
+
+    // Two sides that read the same would make a market impossible to bet on
+    // deliberately -- you couldn't tell which button was which.
+    if (
+      cleanYesLabel &&
+      cleanNoLabel &&
+      cleanYesLabel.toLowerCase() === cleanNoLabel.toLowerCase()
+    ) {
+      return NextResponse.json(
+        { error: "The two sides need different names." },
+        { status: 400 }
+      );
     }
 
     const authHeader = req.headers.get("authorization") ?? "";
@@ -72,6 +99,8 @@ export async function POST(req: NextRequest) {
       .insert({
         creator_id: userData.user.id,
         title: title.trim(),
+        yes_label: cleanYesLabel,
+        no_label: cleanNoLabel,
         description: description?.trim() ?? null,
         close_time: closeTime,
       })

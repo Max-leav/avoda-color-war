@@ -7,6 +7,7 @@ import {
   impliedYesPrice,
 } from "@/lib/calculations";
 import { formatCloseTime, timeUntilClose } from "@/lib/time";
+import { sideLabel, winningLabel } from "@/lib/labels";
 
 export default function MarketCard({ market }: { market: Market }) {
   const yes = impliedYesPrice(market);
@@ -26,7 +27,9 @@ export default function MarketCard({ market }: { market: Market }) {
           <div className={`font-mono text-2xl font-600 ${yes >= 0.5 ? "text-yes" : "text-no"}`}>
             {formatProbability(yes)}
           </div>
-          <div className="text-[10px] uppercase tracking-wide text-muted">chance YES</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted truncate">
+            chance {sideLabel(market, "yes")}
+          </div>
         </div>
       </div>
 
@@ -37,12 +40,13 @@ export default function MarketCard({ market }: { market: Market }) {
 
       {/* Current payout per credit on each side, at the pools as they stand. */}
       <div className="mt-2.5 flex items-center gap-4 text-[11px]">
-        <span className="text-muted">
-          YES pays{" "}
+        <span className="text-muted truncate">
+          {sideLabel(market, "yes")} pays{" "}
           <span className="font-mono text-yes">{formatMultiplier(yesPays)}</span>
         </span>
-        <span className="text-muted">
-          NO pays <span className="font-mono text-no">{formatMultiplier(noPays)}</span>
+        <span className="text-muted truncate">
+          {sideLabel(market, "no")} pays{" "}
+          <span className="font-mono text-no">{formatMultiplier(noPays)}</span>
         </span>
       </div>
 
@@ -52,7 +56,7 @@ export default function MarketCard({ market }: { market: Market }) {
           {market.voided ? (
             "Voided — refunded"
           ) : market.resolved ? (
-            `Resolved: ${market.winning_side?.toUpperCase()}`
+            `Resolved: ${winningLabel(market)}`
           ) : closed ? (
             "Closed — awaiting result"
           ) : (

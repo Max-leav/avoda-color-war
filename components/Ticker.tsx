@@ -2,6 +2,7 @@
 
 import { Market } from "@/lib/types";
 import { formatProbability, impliedYesPrice } from "@/lib/calculations";
+import { sideLabel } from "@/lib/labels";
 
 // Signature element: a scrolling ticker tape of live market prices, styled
 // after a stock exchange board -- fitting for a prediction market. Duplicates
@@ -19,7 +20,7 @@ export default function Ticker({ markets }: { markets: Market[] }) {
             <span key={`${m.id}-${i}`} className="font-mono text-xs flex items-center gap-2">
               <span className="text-muted uppercase tracking-wide">{m.title.slice(0, 40)}</span>
               <span className={yes >= 0.5 ? "text-yes" : "text-no"}>
-                YES {formatProbability(yes)}
+                {sideLabel(m, "yes")} {formatProbability(yes)}
               </span>
             </span>
           );

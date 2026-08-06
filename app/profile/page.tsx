@@ -6,11 +6,14 @@ import { supabase } from "@/lib/supabase";
 import { Transaction, Bet, Market } from "@/lib/types";
 import { formatCredits, formatProbability } from "@/lib/calculations";
 import PaymentInfoForm from "@/components/PaymentInfoForm";
+import { sideLabel } from "@/lib/labels";
 
 export default function ProfilePage() {
   const { session, profile } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [bets, setBets] = useState<(Bet & { markets: Pick<Market, "title"> | null })[]>([]);
+  const [bets, setBets] = useState<
+    (Bet & { markets: Pick<Market, "title" | "yes_label" | "no_label"> | null })[]
+  >([]);
 
   useEffect(() => {
     if (!session) return;
@@ -23,7 +26,9 @@ export default function ProfilePage() {
 
     supabase
       .from("bets")
-      .select("*, markets(title)")
+      // Pull the side names along so bet history reads "BLUE" rather than
+      // "YES" on a market whose sides were renamed.
+      .select("*, markets(title, yes_label, no_label)")
       .eq("user_id", session.user.id)
       .order("timestamp", { ascending: false })
       .limit(20)
@@ -50,7 +55,13 @@ export default function ProfilePage() {
           <div key={b.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
             <span className="text-ink truncate max-w-[40%]">{b.markets?.title ?? "Market"}</span>
             <span className={b.side === "yes" ? "text-yes" : "text-no"}>
-              {b.side.toUpperCase()}
+              {sideLabel(
+                {
+                  yes_label: b.markets?.yes_label ?? null,
+                  no_label: b.markets?.no_label ?? null,
+                },
+                b.side
+              )}
             </span>
             <span className="font-mono text-ink">{b.amount.toLocaleString()} cr</span>
             <span className="font-mono text-muted text-xs">@ {formatProbability(b.price)}</span>
