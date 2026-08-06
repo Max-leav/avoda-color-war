@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { Market } from "@/lib/types";
+import { formatCloseTime } from "@/lib/time";
 import {
   formatCredits,
   formatProbability,
@@ -86,7 +87,7 @@ export default function BetForm({
       <div className="border border-border bg-surface rounded-xl p-5 text-sm text-muted">
         {market.resolved
           ? `This market resolved to ${market.winning_side?.toUpperCase()}. Betting is closed.`
-          : "This market is closed to new bets."}
+          : `Closed to new bets as of ${formatCloseTime(market.close_time)}.`}
       </div>
     );
   }

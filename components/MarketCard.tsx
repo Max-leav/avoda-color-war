@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { Market } from "@/lib/types";
 import { formatProbability, impliedYesPrice } from "@/lib/calculations";
+import { formatCloseTime, timeUntilClose } from "@/lib/time";
 
 export default function MarketCard({ market }: { market: Market }) {
   const yes = impliedYesPrice(market);
   const totalPool = market.yes_pool + market.no_pool;
-  const msUntilClose = new Date(market.close_time).getTime() - Date.now();
-  const closed = msUntilClose <= 0;
-  const closesSoon = !closed && msUntilClose < 1000 * 60 * 60 * 24;
+  const { closed, label } = timeUntilClose(market.close_time);
 
   return (
     <Link
@@ -32,13 +31,13 @@ export default function MarketCard({ market }: { market: Market }) {
       <div className="mt-3 flex items-center justify-between text-xs text-muted">
         <span>{totalPool.toLocaleString()} cr staked</span>
         <span>
-          {market.resolved
-            ? `Resolved: ${market.winning_side?.toUpperCase()}`
-            : closed
-            ? "Closed — awaiting result"
-            : closesSoon
-            ? "Closes soon"
-            : `Closes ${new Date(market.close_time).toLocaleDateString()}`}
+          {market.resolved ? (
+            `Resolved: ${market.winning_side?.toUpperCase()}`
+          ) : closed ? (
+            "Closed — awaiting result"
+          ) : (
+            <span title={formatCloseTime(market.close_time)}>Closes in {label}</span>
+          )}
         </span>
       </div>
     </Link>

@@ -11,6 +11,8 @@ import {
   impliedYesPrice,
   impliedNoPrice,
 } from "@/lib/calculations";
+import { formatCloseTime, timeUntilClose } from "@/lib/time";
+import { useNow } from "@/lib/useNow";
 
 export default function MarketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +25,7 @@ export default function MarketDetailPage() {
   const [scheduling, setScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleNote, setScheduleNote] = useState<string | null>(null);
+  const now = useNow();
 
   async function load() {
     const [{ data: m }, { data: b }] = await Promise.all([
@@ -117,7 +120,10 @@ export default function MarketDetailPage() {
   const no = impliedNoPrice(market);
   const isCreator = session?.user?.id === market.creator_id;
   const canManage = !!session && (isCreator || !!profile?.is_admin);
-  const closedToBets = new Date(market.close_time).getTime() <= Date.now();
+  const { closed: closedToBets, label: closeLabel } = timeUntilClose(
+    market.close_time,
+    now
+  );
   // Closed but not yet resolved -- the state manual closing creates a lot of.
   const awaitingResult = closedToBets && !market.resolved;
 
@@ -136,6 +142,32 @@ export default function MarketDetailPage() {
         {market.description && (
           <p className="text-muted text-sm mb-4 leading-relaxed">{market.description}</p>
         )}
+
+        {/* Close time, for everyone. Read-only -- changing it lives in the
+            manage panel further down, which only admins and the creator see. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs mb-6">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              market.resolved ? "bg-muted" : closedToBets ? "bg-no" : "bg-yes"
+            }`}
+            aria-hidden="true"
+          />
+          <span className={market.resolved || closedToBets ? "text-muted" : "text-yes"}>
+            {market.resolved ? "Resolved" : closedToBets ? "Closed" : "Open for bets"}
+          </span>
+          <span className="text-muted">·</span>
+          <span className="text-muted">
+            {closedToBets ? "Closed" : "Closes"} {formatCloseTime(market.close_time)}
+          </span>
+          {!market.resolved && (
+            <>
+              <span className="text-muted">·</span>
+              <span className={closedToBets ? "text-muted" : "text-ink font-mono"}>
+                {closedToBets ? `${closeLabel} ago` : `${closeLabel} left`}
+              </span>
+            </>
+          )}
+        </div>
 
         <div className="flex gap-6 mb-6">
           <div>
@@ -174,9 +206,9 @@ export default function MarketDetailPage() {
           <div className="border border-border bg-surface rounded-xl p-4 mb-6">
             <h2 className="font-display font-600 text-ink mb-1">Manage this market</h2>
             <p className="text-xs text-muted mb-4 leading-relaxed">
-              Closes {new Date(market.close_time).toLocaleString()}. You can move that
-              or shut it early -- but only while it's still open, since reopening a
-              closed market would let people bet on something they might already know.
+              You can move the close time or shut this market early -- but only while
+              it's still open, since reopening a closed market would let people bet on
+              something they might already know.
             </p>
 
             <button

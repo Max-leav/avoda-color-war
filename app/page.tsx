@@ -6,9 +6,12 @@ import { Market } from "@/lib/types";
 import MarketCard from "@/components/MarketCard";
 import Ticker from "@/components/Ticker";
 import { useAuth } from "@/components/AuthProvider";
+import { useNow } from "@/lib/useNow";
 
 export default function HomePage() {
   const { profile } = useAuth();
+  // Ticks so a market moves itself out of "open" the moment it closes.
+  const now = useNow(15000);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +31,6 @@ export default function HomePage() {
   // Three states now that markets can be closed by hand: taking bets,
   // closed but not yet called, and settled. Lumping the middle group in with
   // "open" would invite people to click in and find betting already shut.
-  const now = Date.now();
   const open = markets.filter(
     (m) => !m.resolved && new Date(m.close_time).getTime() > now
   );
