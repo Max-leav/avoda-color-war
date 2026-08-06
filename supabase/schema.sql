@@ -25,6 +25,10 @@ create table public.markets (
   close_time timestamptz not null,
   resolved boolean not null default false,
   winning_side text check (winning_side in ('yes', 'no')),
+  -- Voided is its own state, not resolved-with-no-winner: "this had an
+  -- outcome" and "this never happened" have to stay distinguishable.
+  voided boolean not null default false,
+  void_reason text,
   yes_pool numeric(12,2) not null default 0,
   no_pool numeric(12,2) not null default 0,
   created_at timestamptz not null default now()
@@ -44,7 +48,7 @@ create table public.bets (
 create table public.transactions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
-  type text not null check (type in ('signup_bonus', 'bet_placed', 'payout', 'admin_adjustment')),
+  type text not null check (type in ('signup_bonus', 'bet_placed', 'payout', 'admin_adjustment', 'refund')),
   amount numeric(12,2) not null,
   description text,
   timestamp timestamptz not null default now()

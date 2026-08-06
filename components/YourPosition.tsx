@@ -86,13 +86,13 @@ export default function YourPosition({ market }: { market: Market }) {
 
   const totalStaked = round2(positions.reduce((sum, p) => sum + p.staked, 0));
 
-  if (market.resolved) {
+  if (market.resolved || market.voided) {
     const returned = round2(positions.reduce((sum, p) => sum + p.returns, 0));
     const net = round2(returned - totalStaked);
     const won = net > 0;
     // Nobody bet the winning side, so everyone got their stake back. Calling
     // that a "loss" would be wrong -- the money came home.
-    const refunded = isRefundedMarket(market);
+    const refunded = market.voided || isRefundedMarket(market);
 
     return (
       <section
@@ -133,7 +133,9 @@ export default function YourPosition({ market }: { market: Market }) {
         </div>
 
         <p className="text-[11px] text-muted mt-2">
-          {refunded
+          {market.voided
+            ? "This market was voided, so every stake came back in full. Already in your balance."
+            : refunded
             ? `Nobody bet ${market.winning_side?.toUpperCase()}, so every stake was returned
                in full. Already back in your balance.`
             : "Already credited to your balance when the market resolved."}

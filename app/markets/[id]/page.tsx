@@ -30,6 +30,8 @@ export default function MarketDetailPage() {
   const [scheduling, setScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleNote, setScheduleNote] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voiding, setVoiding] = useState(false);
   const now = useNow();
 
   async function load() {
@@ -49,6 +51,46 @@ export default function MarketDetailPage() {
   useEffect(() => {
     if (id) load();
   }, [id]);
+
+  async function voidMarket() {
+    setScheduleError(null);
+    setScheduleNote(null);
+
+    if (
+      !confirm(
+        "Void this market and refund every bet in full? This can't be undone."
+      )
+    ) {
+      return;
+    }
+
+    setVoiding(true);
+    try {
+      const {
+        data: { session: freshSession },
+      } = await supabase.auth.getSession();
+      const res = await fetch(`/api/markets/${id}/void`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${freshSession?.access_token}`,
+        },
+        body: JSON.stringify({ reason: voidReason }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Could not void the market.");
+
+      setVoidReason("");
+      setScheduleNote(
+        `Market voided. ${body.refundedBets} bet(s) refunded, ${body.refundedCredits} credits returned.`
+      );
+      await load();
+    } catch (e: any) {
+      setScheduleError(e.message);
+    } finally {
+      setVoiding(false);
+    }
+  }
 
   async function updateSchedule(payload: { closeNow?: true; closeTime?: string }) {
     setScheduleError(null);
@@ -127,12 +169,15 @@ export default function MarketDetailPage() {
   const noPays = currentPayoutMultiplier(market, "no");
   const isCreator = session?.user?.id === market.creator_id;
   const canManage = !!session && (isCreator || !!profile?.is_admin);
+  // A voided market is settled, same as a resolved one -- no more betting,
+  // no schedule changes, no resolving it after the fact.
+  const settled = market.resolved || market.voided;
   const { closed: closedToBets, label: closeLabel } = timeUntilClose(
     market.close_time,
     now
   );
   // Closed but not yet resolved -- the state manual closing creates a lot of.
-  const awaitingResult = closedToBets && !market.resolved;
+  const awaitingResult = closedToBets && !settled;
 
   // datetime-local wants "YYYY-MM-DDTHH:mm" in *local* time, and toISOString
   // returns UTC, so slicing an ISO string here would silently shift the
@@ -199,6 +244,17 @@ export default function MarketDetailPage() {
           </div>
         </div>
 
+        {market.voided && (
+          <div className="border border-border bg-surface rounded-xl p-4 mb-6 text-sm">
+            <span className="text-ink font-600">Voided.</span>{" "}
+            <span className="text-muted">
+              {market.void_reason
+                ? `${market.void_reason} — every bet was refunded in full.`
+                : "Every bet was refunded in full."}
+            </span>
+          </div>
+        )}
+
         <PayoutExplainer className="mb-6" />
 
         <YourPosition market={market} />
@@ -222,49 +278,76 @@ export default function MarketDetailPage() {
           </div>
         )}
 
-        {canManage && !market.resolved && !closedToBets && (
+        {canManage && !settled && (
           <div className="border border-border bg-surface rounded-xl p-4 mb-6">
             <h2 className="font-display font-600 text-ink mb-1">Manage this market</h2>
-            <p className="text-xs text-muted mb-4 leading-relaxed">
-              You can move the close time or shut this market early -- but only while
-              it's still open, since reopening a closed market would let people bet on
-              something they might already know.
-            </p>
 
-            <button
-              onClick={() => updateSchedule({ closeNow: true })}
-              disabled={scheduling}
-              className="w-full bg-no/10 border border-no text-no rounded-lg py-2 text-sm font-600 hover:bg-no/20 transition-colors disabled:opacity-40 mb-4"
-            >
-              {scheduling ? "Working…" : "Close now"}
-            </button>
+            {!closedToBets && (
+              <>
+                <p className="text-xs text-muted mb-4 leading-relaxed">
+                  You can move the close time or shut this market early -- but only
+                  while it's still open, since reopening a closed market would let
+                  people bet on something they might already know.
+                </p>
 
-            <label className="block text-xs uppercase tracking-wide text-muted mb-1">
-              Or move the close time
-            </label>
-            <input
-              type="datetime-local"
-              value={newCloseTime || toLocalInputValue(new Date(market.close_time))}
-              min={toLocalInputValue(new Date())}
-              onChange={(e) => setNewCloseTime(e.target.value)}
-              className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-ink focus-ring mb-2"
-            />
-            <button
-              onClick={() =>
-                updateSchedule({ closeTime: new Date(newCloseTime).toISOString() })
-              }
-              disabled={scheduling || !newCloseTime}
-              className="w-full border border-border text-ink rounded-lg py-2 text-sm font-600 hover:border-brand transition-colors disabled:opacity-40"
-            >
-              Update close time
-            </button>
+                <button
+                  onClick={() => updateSchedule({ closeNow: true })}
+                  disabled={scheduling}
+                  className="w-full bg-no/10 border border-no text-no rounded-lg py-2 text-sm font-600 hover:bg-no/20 transition-colors disabled:opacity-40 mb-4"
+                >
+                  {scheduling ? "Working…" : "Close now"}
+                </button>
+
+                <label className="block text-xs uppercase tracking-wide text-muted mb-1">
+                  Or move the close time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={newCloseTime || toLocalInputValue(new Date(market.close_time))}
+                  min={toLocalInputValue(new Date())}
+                  onChange={(e) => setNewCloseTime(e.target.value)}
+                  className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-ink focus-ring mb-2"
+                />
+                <button
+                  onClick={() =>
+                    updateSchedule({ closeTime: new Date(newCloseTime).toISOString() })
+                  }
+                  disabled={scheduling || !newCloseTime}
+                  className="w-full border border-border text-ink rounded-lg py-2 text-sm font-600 hover:border-brand transition-colors disabled:opacity-40"
+                >
+                  Update close time
+                </button>
+              </>
+            )}
+
+            {/* Voiding stays available after close: an event can get called
+                off once betting has shut but before anyone knows a result. */}
+            <div className="mt-5 pt-4 border-t border-border">
+              <p className="text-xs text-muted mb-3 leading-relaxed">
+                If the event was cancelled or there's no fair way to call it, void the
+                market. Every stake goes back in full, with no fee.
+              </p>
+              <input
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Reason (optional) — e.g. rained out"
+                className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-ink focus-ring mb-2"
+              />
+              <button
+                onClick={voidMarket}
+                disabled={voiding}
+                className="w-full bg-no/10 border border-no text-no rounded-lg py-2 text-sm font-600 hover:bg-no/20 transition-colors disabled:opacity-40"
+              >
+                {voiding ? "Refunding…" : "Void market & refund all bets"}
+              </button>
+            </div>
 
             {scheduleError && <p className="text-xs text-no mt-2">{scheduleError}</p>}
             {scheduleNote && <p className="text-xs text-yes mt-2">{scheduleNote}</p>}
           </div>
         )}
 
-        {isCreator && !market.resolved && (
+        {isCreator && !settled && (
           <div className="border border-brand/40 bg-brand/5 rounded-xl p-4 mb-6">
             <p className="text-sm text-ink mb-3">
               You created this market. Resolve it once the outcome is known:

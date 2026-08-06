@@ -31,13 +31,15 @@ export default function HomePage() {
   // Three states now that markets can be closed by hand: taking bets,
   // closed but not yet called, and settled. Lumping the middle group in with
   // "open" would invite people to click in and find betting already shut.
+  // Voided counts as settled: it's done, it just never had an outcome.
+  const isSettled = (m: Market) => m.resolved || m.voided;
   const open = markets.filter(
-    (m) => !m.resolved && new Date(m.close_time).getTime() > now
+    (m) => !isSettled(m) && new Date(m.close_time).getTime() > now
   );
   const awaitingResult = markets.filter(
-    (m) => !m.resolved && new Date(m.close_time).getTime() <= now
+    (m) => !isSettled(m) && new Date(m.close_time).getTime() <= now
   );
-  const resolved = markets.filter((m) => m.resolved);
+  const resolved = markets.filter(isSettled);
 
   return (
     <>

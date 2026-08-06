@@ -80,6 +80,13 @@ export async function PATCH(
       );
     }
 
+    if (market.voided) {
+      return NextResponse.json(
+        { error: "This market was voided. Its schedule can't be changed." },
+        { status: 400 }
+      );
+    }
+
     if (market.resolved) {
       return NextResponse.json(
         { error: "This market has already resolved." },

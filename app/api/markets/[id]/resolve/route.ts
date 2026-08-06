@@ -44,6 +44,13 @@ export async function POST(
     if (marketErr || !market) {
       return NextResponse.json({ error: "Market not found." }, { status: 404 });
     }
+    if (market.voided) {
+      return NextResponse.json(
+        { error: "This market was voided and refunded. It can't be resolved." },
+        { status: 400 }
+      );
+    }
+
     if (market.resolved) {
       return NextResponse.json({ error: "Market already resolved." }, { status: 400 });
     }

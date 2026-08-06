@@ -28,7 +28,10 @@ export default function BetForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const closed = market.resolved || new Date(market.close_time).getTime() <= Date.now();
+  const closed =
+    market.resolved ||
+    market.voided ||
+    new Date(market.close_time).getTime() <= Date.now();
   const price = side === "yes" ? impliedYesPrice(market) : impliedNoPrice(market);
 
   // Live preview state. Recomputed on every keystroke, before anything is
@@ -87,7 +90,9 @@ export default function BetForm({
   if (closed) {
     return (
       <div className="border border-border bg-surface rounded-xl p-5 text-sm text-muted">
-        {market.resolved
+        {market.voided
+          ? "This market was voided. Every bet was refunded in full."
+          : market.resolved
           ? `This market resolved to ${market.winning_side?.toUpperCase()}. Betting is closed.`
           : `Closed to new bets as of ${formatCloseTime(market.close_time)}.`}
       </div>

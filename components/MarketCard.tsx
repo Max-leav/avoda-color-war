@@ -49,7 +49,9 @@ export default function MarketCard({ market }: { market: Market }) {
       <div className="mt-2.5 flex items-center justify-between text-xs text-muted">
         <span>{totalPool.toLocaleString()} cr staked</span>
         <span>
-          {market.resolved ? (
+          {market.voided ? (
+            "Voided — refunded"
+          ) : market.resolved ? (
             `Resolved: ${market.winning_side?.toUpperCase()}`
           ) : closed ? (
             "Closed — awaiting result"

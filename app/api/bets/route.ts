@@ -65,6 +65,14 @@ export async function POST(req: NextRequest) {
     if (market.resolved) {
       return NextResponse.json({ error: "This market has already resolved." }, { status: 400 });
     }
+    // A market can be voided while its close time is still in the future, so
+    // this needs its own check -- the close_time gate below won't catch it.
+    if (market.voided) {
+      return NextResponse.json(
+        { error: "This market was voided and all bets refunded." },
+        { status: 400 }
+      );
+    }
     if (new Date(market.close_time).getTime() <= Date.now()) {
       return NextResponse.json({ error: "This market is closed to new bets." }, { status: 400 });
     }
