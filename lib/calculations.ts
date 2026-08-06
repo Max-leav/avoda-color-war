@@ -161,6 +161,40 @@ export function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/**
+ * The payout rate a side is showing right now, per credit staked, net of the
+ * broker's fee. This is the marginal rate -- what a small bet would earn
+ * against the pools as they stand.
+ *
+ * It's a quote, not a promise, and it moves the instant you act on it: your
+ * own stake joins the pool you're backing, which dilutes your share of the
+ * other one. A big bet on a thin side will come in noticeably under the
+ * number shown here, which is why the bet form prices your actual stake
+ * separately instead of just multiplying by this.
+ *
+ * Returns null when nothing is staked on that side yet -- the first bet takes
+ * the entire opposing pool, so the rate depends on how big that bet is and
+ * there's no single number to show.
+ */
+export function currentPayoutMultiplier(
+  market: Pick<Market, "yes_pool" | "no_pool">,
+  side: "yes" | "no"
+): number | null {
+  const sidePool = side === "yes" ? market.yes_pool : market.no_pool;
+  const otherPool = side === "yes" ? market.no_pool : market.yes_pool;
+
+  if (sidePool <= 0) return null;
+  if (otherPool <= 0) return 1;
+
+  return 1 + (otherPool / sidePool) * (1 - BROKER_FEE_RATE);
+}
+
+/** e.g. 1.9475 -> "1.95x", or "--" when there's no meaningful rate yet. */
+export function formatMultiplier(multiplier: number | null): string {
+  if (multiplier === null) return "—";
+  return `${multiplier.toFixed(2)}×`;
+}
+
 /** Format a probability (0-1) as a percentage string, e.g. 0.634 -> "63%". */
 export function formatProbability(p: number): string {
   return `${Math.round(p * 100)}%`;

@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { Market } from "@/lib/types";
-import { formatProbability, impliedYesPrice } from "@/lib/calculations";
+import {
+  currentPayoutMultiplier,
+  formatMultiplier,
+  formatProbability,
+  impliedYesPrice,
+} from "@/lib/calculations";
 import { formatCloseTime, timeUntilClose } from "@/lib/time";
 
 export default function MarketCard({ market }: { market: Market }) {
   const yes = impliedYesPrice(market);
   const totalPool = market.yes_pool + market.no_pool;
   const { closed, label } = timeUntilClose(market.close_time);
+  const yesPays = currentPayoutMultiplier(market, "yes");
+  const noPays = currentPayoutMultiplier(market, "no");
 
   return (
     <Link
@@ -28,7 +35,18 @@ export default function MarketCard({ market }: { market: Market }) {
         <div className="h-full bg-yes" style={{ width: `${yes * 100}%` }} />
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-xs text-muted">
+      {/* Current payout per credit on each side, at the pools as they stand. */}
+      <div className="mt-2.5 flex items-center gap-4 text-[11px]">
+        <span className="text-muted">
+          YES pays{" "}
+          <span className="font-mono text-yes">{formatMultiplier(yesPays)}</span>
+        </span>
+        <span className="text-muted">
+          NO pays <span className="font-mono text-no">{formatMultiplier(noPays)}</span>
+        </span>
+      </div>
+
+      <div className="mt-2.5 flex items-center justify-between text-xs text-muted">
         <span>{totalPool.toLocaleString()} cr staked</span>
         <span>
           {market.resolved ? (

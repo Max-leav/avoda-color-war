@@ -12,6 +12,8 @@ import {
   impliedYesPrice,
   previewPayout,
   BROKER_FEE_RATE,
+  currentPayoutMultiplier,
+  formatMultiplier,
 } from "@/lib/calculations";
 
 export default function BetForm({
@@ -105,6 +107,9 @@ export default function BetForm({
           }`}
         >
           YES · {formatProbability(impliedYesPrice(market))}
+          <span className="block text-[11px] font-mono opacity-80 mt-0.5">
+            pays {formatMultiplier(currentPayoutMultiplier(market, "yes"))}
+          </span>
         </button>
         <button
           onClick={() => setSide("no")}
@@ -115,6 +120,9 @@ export default function BetForm({
           }`}
         >
           NO · {formatProbability(impliedNoPrice(market))}
+          <span className="block text-[11px] font-mono opacity-80 mt-0.5">
+            pays {formatMultiplier(currentPayoutMultiplier(market, "no"))}
+          </span>
         </button>
       </div>
 
@@ -210,8 +218,10 @@ export default function BetForm({
       </button>
 
       <p className="text-[11px] text-muted mt-3 leading-relaxed">
-        Play-money credits only. Nothing here represents real currency or a
-        withdrawable balance.
+        The rates above are what the market pays right now and keep moving until it
+        closes — your own bet moves them too, so the figure in the box is the one
+        that applies to your stake. Credits are for the game only and carry no cash
+        value.
       </p>
     </div>
   );

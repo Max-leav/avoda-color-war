@@ -7,11 +7,14 @@ import { Market, Bet } from "@/lib/types";
 import { useAuth } from "@/components/AuthProvider";
 import BetForm from "@/components/BetForm";
 import YourPosition from "@/components/YourPosition";
+import PayoutExplainer from "@/components/PayoutExplainer";
 import {
   formatProbability,
   impliedYesPrice,
   impliedNoPrice,
   isRefundedMarket,
+  currentPayoutMultiplier,
+  formatMultiplier,
 } from "@/lib/calculations";
 import { formatCloseTime, timeUntilClose } from "@/lib/time";
 import { useNow } from "@/lib/useNow";
@@ -120,6 +123,8 @@ export default function MarketDetailPage() {
 
   const yes = impliedYesPrice(market);
   const no = impliedNoPrice(market);
+  const yesPays = currentPayoutMultiplier(market, "yes");
+  const noPays = currentPayoutMultiplier(market, "no");
   const isCreator = session?.user?.id === market.creator_id;
   const canManage = !!session && (isCreator || !!profile?.is_admin);
   const { closed: closedToBets, label: closeLabel } = timeUntilClose(
@@ -175,10 +180,16 @@ export default function MarketDetailPage() {
           <div>
             <div className="font-mono text-3xl font-600 text-yes">{formatProbability(yes)}</div>
             <div className="text-[10px] uppercase tracking-wide text-muted">YES</div>
+            <div className="font-mono text-xs text-muted mt-1">
+              pays {formatMultiplier(yesPays)}
+            </div>
           </div>
           <div>
             <div className="font-mono text-3xl font-600 text-no">{formatProbability(no)}</div>
             <div className="text-[10px] uppercase tracking-wide text-muted">NO</div>
+            <div className="font-mono text-xs text-muted mt-1">
+              pays {formatMultiplier(noPays)}
+            </div>
           </div>
           <div className="ml-auto text-right">
             <div className="font-mono text-lg text-ink">
@@ -187,6 +198,8 @@ export default function MarketDetailPage() {
             <div className="text-[10px] uppercase tracking-wide text-muted">credits staked</div>
           </div>
         </div>
+
+        <PayoutExplainer className="mb-6" />
 
         <YourPosition market={market} />
 
