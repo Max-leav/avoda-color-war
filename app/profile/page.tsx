@@ -5,6 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { Transaction, Bet, Market } from "@/lib/types";
 import { formatCredits, formatProbability } from "@/lib/calculations";
+import PaymentInfoForm from "@/components/PaymentInfoForm";
 
 export default function ProfilePage() {
   const { session, profile } = useAuth();
@@ -39,6 +40,8 @@ export default function ProfilePage() {
       <p className="font-mono text-brand text-lg mb-8">
         {profile ? formatCredits(profile.balance) : "…"} credits
       </p>
+
+      <PaymentInfoForm />
 
       <h2 className="font-display font-600 text-ink mb-3">Your bets</h2>
       <div className="border border-border rounded-xl divide-y divide-border overflow-hidden mb-8">

@@ -39,3 +39,16 @@ export type Transaction = {
   description: string | null;
   timestamp: string;
 };
+
+export type PaymentInfo = {
+  user_id: string;
+  venmo_handle: string | null;
+  phone_last4: string | null;
+  updated_at: string;
+};
+
+/** A user row as returned by the admin search, with payment details joined on. */
+export type AdminUserResult = User & {
+  venmo_handle: string | null;
+  phone_last4: string | null;
+};

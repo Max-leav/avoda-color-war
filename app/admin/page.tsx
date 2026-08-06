@@ -3,29 +3,53 @@
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase";
-import { User } from "@/lib/types";
+import { AdminUserResult } from "@/lib/types";
 import { formatCredits } from "@/lib/calculations";
 
 export default function AdminPage() {
   const { session, profile, loading } = useAuth();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<User[]>([]);
-  const [target, setTarget] = useState<User | null>(null);
+  const [results, setResults] = useState<AdminUserResult[]>([]);
+  const [target, setTarget] = useState<AdminUserResult | null>(null);
+  const [searching, setSearching] = useState(false);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Goes through the API rather than querying Supabase directly, because
+  // payment details are RLS-restricted to their owner -- the browser client
+  // genuinely can't read another user's Venmo handle, by design. The route
+  // re-checks that the caller is an admin before returning anything.
   async function search() {
     setError(null);
     setMessage(null);
-    const { data } = await supabase
-      .from("users")
-      .select("*")
-      .or(`username.ilike.%${query}%,email.ilike.%${query}%`)
-      .limit(10);
-    setResults((data as User[]) ?? []);
+    if (!query.trim()) return;
+
+    setSearching(true);
+    try {
+      const {
+        data: { session: freshSession },
+      } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/search-users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${freshSession?.access_token}`,
+        },
+        body: JSON.stringify({ query }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Search failed.");
+
+      setResults(body.results as AdminUserResult[]);
+      if (body.results.length === 0) setMessage("No users matched that.");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSearching(false);
+    }
   }
 
   async function submitAdjustment() {
@@ -96,9 +120,10 @@ export default function AdminPage() {
         />
         <button
           onClick={search}
-          className="bg-surface border border-border rounded-lg px-4 text-sm text-ink hover:border-brand transition-colors"
+          disabled={searching}
+          className="bg-surface border border-border rounded-lg px-4 text-sm text-ink hover:border-brand transition-colors disabled:opacity-40"
         >
-          Search
+          {searching ? "…" : "Search"}
         </button>
       </div>
 
@@ -112,11 +137,27 @@ export default function AdminPage() {
                 setResults([]);
                 setQuery(u.username);
               }}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-surfaceHover transition-colors text-left"
+              className="w-full px-4 py-3 text-sm hover:bg-surfaceHover transition-colors text-left"
             >
-              <span className="text-ink">{u.username}</span>
-              <span className="text-muted text-xs">{u.email}</span>
-              <span className="font-mono text-brand">{formatCredits(u.balance)}</span>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-ink truncate">{u.username}</span>
+                <span className="font-mono text-brand shrink-0">
+                  {formatCredits(u.balance)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 mt-1">
+                <span className="text-muted text-xs truncate">{u.email}</span>
+                <span className="font-mono text-xs shrink-0">
+                  {u.venmo_handle ? (
+                    <span className="text-ink">@{u.venmo_handle}</span>
+                  ) : (
+                    <span className="text-muted">no venmo</span>
+                  )}
+                  {u.phone_last4 && (
+                    <span className="text-muted"> · ••••{u.phone_last4}</span>
+                  )}
+                </span>
+              </div>
             </button>
           ))}
         </div>
@@ -124,10 +165,25 @@ export default function AdminPage() {
 
       {target && (
         <div className="border border-border bg-surface rounded-xl p-5">
-          <p className="text-sm text-ink mb-4">
+          <p className="text-sm text-ink mb-3">
             Adjusting <span className="font-600">{target.username}</span> — current balance{" "}
             <span className="font-mono text-brand">{formatCredits(target.balance)}</span>
           </p>
+
+          <div className="border border-border rounded-lg bg-bg p-3 mb-4">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="text-muted">Venmo</span>
+              <span className="font-mono text-ink">
+                {target.venmo_handle ? `@${target.venmo_handle}` : "— not provided"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted">Phone (last 4)</span>
+              <span className="font-mono text-ink">
+                {target.phone_last4 ? `••••${target.phone_last4}` : "— not provided"}
+              </span>
+            </div>
+          </div>
 
           <label className="block text-xs uppercase tracking-wide text-muted mb-1">
             Amount (negative to debit, e.g. -50)

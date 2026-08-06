@@ -50,15 +50,34 @@ export function calculatePayout(
   bet: Pick<Bet, "amount" | "side">,
   market: Pick<Market, "yes_pool" | "no_pool" | "winning_side">
 ): number {
-  if (!market.winning_side || bet.side !== market.winning_side) return 0;
+  if (!market.winning_side) return 0;
 
   const winningPool = market.winning_side === "yes" ? market.yes_pool : market.no_pool;
   const losingPool = market.winning_side === "yes" ? market.no_pool : market.yes_pool;
 
-  if (winningPool <= 0) return 0;
+  // Nobody backed the winning side, so there's no one to hand the losing pool
+  // to. Refund every stake instead of destroying it -- the alternative is a
+  // market where everyone piles onto the obvious answer, the upset lands, and
+  // the entire pot silently vanishes.
+  if (winningPool <= 0) return round2(bet.amount);
+
+  if (bet.side !== market.winning_side) return 0;
 
   const shareOfLosingPool = (bet.amount / winningPool) * losingPool;
   return round2(bet.amount + shareOfLosingPool);
+}
+
+/**
+ * True when a resolved market had no bets on the winning side, meaning every
+ * stake gets refunded rather than paid out. Callers use this to label the
+ * result honestly instead of showing a "loss" that was actually returned.
+ */
+export function isRefundedMarket(
+  market: Pick<Market, "yes_pool" | "no_pool" | "winning_side">
+): boolean {
+  if (!market.winning_side) return false;
+  const winningPool = market.winning_side === "yes" ? market.yes_pool : market.no_pool;
+  return winningPool <= 0;
 }
 
 /**

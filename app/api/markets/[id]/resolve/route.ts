@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getServiceClient } from "@/lib/supabase";
-import { calculatePayout, round2 } from "@/lib/calculations";
+import { calculatePayout, isRefundedMarket, round2 } from "@/lib/calculations";
 
 // ============================================================================
 // POST /api/markets/[id]/resolve
@@ -64,6 +64,10 @@ export async function POST(
       .eq("market_id", marketId);
     if (betsErr) throw betsErr;
 
+    // When nobody bet the winning side every stake comes back, and the ledger
+    // should say "refund" rather than telling a losing bettor they won.
+    const refunding = isRefundedMarket({ ...market, winning_side: winningSide });
+
     for (const bet of bets ?? []) {
       const payout = calculatePayout(bet, { ...market, winning_side: winningSide });
 
@@ -82,7 +86,9 @@ export async function POST(
             user_id: bet.user_id,
             type: "payout",
             amount: payout,
-            description: `Payout for winning ${winningSide.toUpperCase()} bet on market ${marketId}`,
+            description: refunding
+              ? `Refund -- no bets on ${winningSide.toUpperCase()}, market ${marketId} paid nobody`
+              : `Payout for winning ${winningSide.toUpperCase()} bet on market ${marketId}`,
           });
         }
       }

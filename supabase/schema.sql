@@ -118,6 +118,35 @@ grant all privileges on all sequences in schema public to service_role;
 alter default privileges in schema public
   grant all privileges on tables to service_role;
 
+-- Payment details live in their own table so they aren't exposed by the
+-- world-readable public.users policy. See supabase/add_payment_info.sql.
+create table if not exists public.user_payment_info (
+  user_id uuid primary key references public.users(id) on delete cascade,
+  venmo_handle text,
+  -- Last 4 digits only. Stored as text so leading zeros survive; a numeric
+  -- column would turn "0123" into 123.
+  phone_last4 text,
+  updated_at timestamptz not null default now(),
+  constraint phone_last4_is_four_digits
+    check (phone_last4 is null or phone_last4 ~ '^[0-9]{4}$'),
+  constraint venmo_handle_shape
+    check (venmo_handle is null or venmo_handle ~ '^[A-Za-z0-9_-]{3,30}$')
+);
+
+alter table public.user_payment_info enable row level security;
+
+drop policy if exists "users can view their own payment info" on public.user_payment_info;
+create policy "users can view their own payment info"
+  on public.user_payment_info for select
+  using (auth.uid() = user_id);
+
+-- No INSERT/UPDATE policy on purpose. Writes go through
+-- POST /api/profile/payment-info, matching how every other write in this app
+-- works -- the client never mutates a table directly.
+
+grant select on public.user_payment_info to authenticated;
+grant all privileges on public.user_payment_info to service_role;
+
 create function public.handle_new_user()
 returns trigger as $$
 begin

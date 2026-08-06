@@ -11,6 +11,7 @@ import {
   formatProbability,
   impliedYesPrice,
   impliedNoPrice,
+  isRefundedMarket,
 } from "@/lib/calculations";
 import { formatCloseTime, timeUntilClose } from "@/lib/time";
 import { useNow } from "@/lib/useNow";
@@ -195,7 +196,10 @@ export default function MarketDetailPage() {
             <span className={market.winning_side === "yes" ? "text-yes" : "text-no"}>
               {market.winning_side?.toUpperCase()}
             </span>{" "}
-            won. Payouts have been credited to winning bettors.
+            won.{" "}
+            {isRefundedMarket(market)
+              ? `Nobody bet that side, so every stake was refunded in full.`
+              : "Payouts have been credited to winning bettors."}
           </div>
         )}
 

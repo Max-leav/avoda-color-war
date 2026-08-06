@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { Bet, Market } from "@/lib/types";
-import { calculatePayout, formatCredits, round2 } from "@/lib/calculations";
+import {
+  calculatePayout,
+  formatCredits,
+  isRefundedMarket,
+  round2,
+} from "@/lib/calculations";
 
 type SidePosition = {
   side: "yes" | "no";
@@ -84,6 +89,9 @@ export default function YourPosition({ market }: { market: Market }) {
     const returned = round2(positions.reduce((sum, p) => sum + p.returns, 0));
     const net = round2(returned - totalStaked);
     const won = net > 0;
+    // Nobody bet the winning side, so everyone got their stake back. Calling
+    // that a "loss" would be wrong -- the money came home.
+    const refunded = isRefundedMarket(market);
 
     return (
       <section
@@ -100,7 +108,11 @@ export default function YourPosition({ market }: { market: Market }) {
           >
             <span className={p.side === "yes" ? "text-yes" : "text-no"}>
               {p.side.toUpperCase()}
-              {p.side === market.winning_side ? " · won" : " · lost"}
+              {refunded
+                ? " · refunded"
+                : p.side === market.winning_side
+                ? " · won"
+                : " · lost"}
             </span>
             <span className="font-mono text-muted">
               {formatCredits(p.staked)} staked
@@ -109,7 +121,7 @@ export default function YourPosition({ market }: { market: Market }) {
         ))}
 
         <div className="flex items-baseline justify-between pt-3 mt-3 border-t border-border">
-          <span className="text-xs text-muted">Paid out</span>
+          <span className="text-xs text-muted">{refunded ? "Refunded" : "Paid out"}</span>
           <span className="font-mono tabular-nums text-lg text-ink">
             {formatCredits(returned)}
             <span className={`ml-2 text-sm ${won ? "text-yes" : "text-no"}`}>
@@ -120,7 +132,10 @@ export default function YourPosition({ market }: { market: Market }) {
         </div>
 
         <p className="text-[11px] text-muted mt-2">
-          Already credited to your balance when the market resolved.
+          {refunded
+            ? `Nobody bet ${market.winning_side?.toUpperCase()}, so every stake was returned
+               in full. Already back in your balance.`
+            : "Already credited to your balance when the market resolved."}
         </p>
       </section>
     );
