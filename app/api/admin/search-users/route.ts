@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     const { data: payments, error: paymentErr } = ids.length
       ? await db
           .from("user_payment_info")
-          .select("user_id, venmo_handle, phone_last4")
+          .select("user_id, venmo_handle")
           .in("user_id", ids)
       : { data: [], error: null };
 
@@ -83,7 +83,6 @@ export async function POST(req: NextRequest) {
     const results = (users ?? []).map((u) => ({
       ...u,
       venmo_handle: byUser.get(u.id)?.venmo_handle ?? null,
-      phone_last4: byUser.get(u.id)?.phone_last4 ?? null,
     }));
 
     return NextResponse.json({ results });

@@ -174,6 +174,24 @@ run the migration block at the bottom of `supabase/schema.sql` first.
 - Free-tier Supabase pauses projects after a week of inactivity; log in
   every so often or upgrade if that's a problem.
 
+## Venmo handles
+
+Collected on the signup form and stored in `public.user_payment_info`, which is
+readable only by its owner -- `public.users` is world-readable (that's how
+usernames and balances show up), so payment details can't live there. Admins
+read handles through `/api/admin/search-users`, which checks `is_admin`
+server-side before returning anything.
+
+The handle travels as auth metadata and is copied across by the signup trigger,
+rather than being POSTed after signup. With email confirmation enabled,
+`signUp()` returns no session, so a follow-up write would have nothing to
+authenticate with and the handle would be dropped for exactly those accounts.
+The trigger validates the shape and skips anything malformed -- an error raised
+inside it would abort the whole signup, and a typo'd handle must never stop
+someone creating an account.
+
+Users can add or change it later on their profile page.
+
 ## Password resets
 
 The flow is: `/login` → "Forgot your password?" → Supabase emails a link →

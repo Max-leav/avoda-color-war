@@ -12,6 +12,11 @@
 -- server route using the service role key, which is checked for is_admin
 -- before it returns anything.
 --
+-- NOTE: superseded in part by add_venmo_at_signup.sql, which drops
+-- phone_last4 and collects the handle during signup. If you're setting up
+-- fresh, run this first and that one after -- or just use schema.sql, which
+-- already reflects both.
+--
 -- Safe to run multiple times.
 -- ============================================================================
 

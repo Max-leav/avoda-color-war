@@ -153,9 +153,6 @@ export default function AdminPage() {
                   ) : (
                     <span className="text-muted">no venmo</span>
                   )}
-                  {u.phone_last4 && (
-                    <span className="text-muted"> · ••••{u.phone_last4}</span>
-                  )}
                 </span>
               </div>
             </button>
@@ -171,16 +168,10 @@ export default function AdminPage() {
           </p>
 
           <div className="border border-border rounded-lg bg-bg p-3 mb-4">
-            <div className="flex items-center justify-between text-xs mb-1.5">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-muted">Venmo</span>
               <span className="font-mono text-ink">
                 {target.venmo_handle ? `@${target.venmo_handle}` : "— not provided"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted">Phone (last 4)</span>
-              <span className="font-mono text-ink">
-                {target.phone_last4 ? `••••${target.phone_last4}` : "— not provided"}
               </span>
             </div>
           </div>

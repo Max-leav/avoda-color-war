@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { normalizeVenmoHandle, validateVenmoHandle } from "@/lib/payment";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [venmo, setVenmo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -34,10 +36,19 @@ export default function LoginPage() {
       }
 
       if (mode === "signup") {
+        const venmoError = validateVenmoHandle(venmo);
+        if (venmoError) throw new Error(venmoError);
+
+        // The handle travels as account metadata, and the signup trigger
+        // copies it into user_payment_info. Posting it after signUp() would
+        // fail whenever email confirmation is on, since there's no session
+        // yet to authenticate the write with.
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { username } },
+          options: {
+            data: { username, venmo_handle: normalizeVenmoHandle(venmo) },
+          },
         });
         if (error) throw error;
       } else {
@@ -94,6 +105,7 @@ export default function LoginPage() {
         </>
       )}
 
+
       {!(mode === "forgot" && sent) && (
         <>
           <label className="block text-xs uppercase tracking-wide text-muted mb-1">
@@ -143,6 +155,27 @@ export default function LoginPage() {
       )}
 
       {error && <p className="text-xs text-no mb-3">{error}</p>}
+
+      {mode === "signup" && (
+        <>
+          <label className="block text-xs uppercase tracking-wide text-muted mb-1">
+            Venmo handle <span className="normal-case tracking-normal">(optional)</span>
+          </label>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-mono text-muted">@</span>
+            <input
+              value={venmo}
+              onChange={(e) => setVenmo(e.target.value)}
+              placeholder="your-venmo"
+              className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 font-mono text-ink focus-ring"
+            />
+          </div>
+          <p className="text-[11px] text-muted mb-4 leading-relaxed">
+            So an admin can pay you out. Only you and the admins can see it, and you
+            can add or change it later on your profile.
+          </p>
+        </>
+      )}
 
       {!(mode === "forgot" && sent) && (
         <button

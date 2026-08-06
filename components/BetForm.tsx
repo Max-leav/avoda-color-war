@@ -208,9 +208,10 @@ export default function BetForm({
       </button>
 
       <p className="text-[11px] text-muted mt-3 leading-relaxed">
-        The rates above are what the market pays right now and keep moving until the market
-        closes, and your own bet moves them too, so the figure in the box is the one
-        that applies to your stake. 
+        The rates above are what the market pays right now and keep moving until it
+        closes — your own bet moves them too, so the figure in the box is the one
+        that applies to your stake. Credits are for the game only and carry no cash
+        value.
       </p>
     </div>
   );

@@ -5,7 +5,6 @@
  */
 
 const VENMO_PATTERN = /^[A-Za-z0-9_-]{3,30}$/;
-const LAST4_PATTERN = /^[0-9]{4}$/;
 
 /**
  * Strips a leading @ and surrounding whitespace. People type their handle
@@ -26,12 +25,3 @@ export function validateVenmoHandle(input: string): string | null {
   return null;
 }
 
-/** Returns an error message, or null when the digits are fine. Empty is fine. */
-export function validatePhoneLast4(input: string): string | null {
-  const digits = input.trim();
-  if (digits === "") return null;
-  if (!LAST4_PATTERN.test(digits)) {
-    return "Enter exactly 4 digits — the last 4 of your phone number.";
-  }
-  return null;
-}

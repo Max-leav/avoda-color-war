@@ -1,34 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getServiceClient } from "@/lib/supabase";
-import {
-  normalizeVenmoHandle,
-  validatePhoneLast4,
-  validateVenmoHandle,
-} from "@/lib/payment";
+import { normalizeVenmoHandle, validateVenmoHandle } from "@/lib/payment";
 
 // ============================================================================
 // POST /api/profile/payment-info
-// Saves the signed-in user's Venmo handle and last 4 phone digits. You can
-// only ever write your own row -- the user id comes from the access token,
+// Saves the signed-in user's Venmo handle. You can only ever write your own row -- the user id comes from the access token,
 // never from the request body, so there's nothing to tamper with.
 //
-// Body: { venmoHandle?: string, phoneLast4?: string }
-// Sending an empty string for either clears it.
+// Body: { venmoHandle?: string }
+// Sending an empty string clears it.
 // ============================================================================
 export async function POST(req: NextRequest) {
   try {
-    const { venmoHandle = "", phoneLast4 = "" } = await req.json();
+    const { venmoHandle = "" } = await req.json();
 
-    if (typeof venmoHandle !== "string" || typeof phoneLast4 !== "string") {
+    if (typeof venmoHandle !== "string") {
       return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
     }
 
     const venmoError = validateVenmoHandle(venmoHandle);
     if (venmoError) return NextResponse.json({ error: venmoError }, { status: 400 });
-
-    const last4Error = validatePhoneLast4(phoneLast4);
-    if (last4Error) return NextResponse.json({ error: last4Error }, { status: 400 });
 
     const authHeader = req.headers.get("authorization") ?? "";
     const token = authHeader.replace("Bearer ", "");
@@ -44,7 +36,6 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanedHandle = normalizeVenmoHandle(venmoHandle);
-    const cleanedLast4 = phoneLast4.trim();
 
     const db = getServiceClient();
     const { data, error } = await db
@@ -53,7 +44,6 @@ export async function POST(req: NextRequest) {
         {
           user_id: userData.user.id,
           venmo_handle: cleanedHandle === "" ? null : cleanedHandle,
-          phone_last4: cleanedLast4 === "" ? null : cleanedLast4,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id" }
@@ -64,7 +54,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error("POST /api/profile/payment-info failed:", error);
       return NextResponse.json(
-        { error: `Could not save your details: ${error.message}` },
+        { error: `Could not save your Venmo handle: ${error.message}` },
         { status: 500 }
       );
     }

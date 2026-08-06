@@ -123,12 +123,7 @@ alter default privileges in schema public
 create table if not exists public.user_payment_info (
   user_id uuid primary key references public.users(id) on delete cascade,
   venmo_handle text,
-  -- Last 4 digits only. Stored as text so leading zeros survive; a numeric
-  -- column would turn "0123" into 123.
-  phone_last4 text,
   updated_at timestamptz not null default now(),
-  constraint phone_last4_is_four_digits
-    check (phone_last4 is null or phone_last4 ~ '^[0-9]{4}$'),
   constraint venmo_handle_shape
     check (venmo_handle is null or venmo_handle ~ '^[A-Za-z0-9_-]{3,30}$')
 );
@@ -149,6 +144,8 @@ grant all privileges on public.user_payment_info to service_role;
 
 create function public.handle_new_user()
 returns trigger as $$
+declare
+  submitted_handle text;
 begin
   -- New accounts start at zero. Credits come from an admin issuing them
   -- (Admin -> adjust balance), not from signing up, so nobody can farm a
@@ -159,7 +156,22 @@ begin
     coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
     new.email,
     0.00
-  );
+  )
+  on conflict (id) do nothing;
+
+  -- Venmo handle comes through signup metadata. Only stored if it matches the
+  -- allowed shape: the column's check constraint would otherwise raise, and an
+  -- error in this trigger aborts the entire signup. A typo'd handle must never
+  -- be the reason someone can't create an account.
+  submitted_handle := ltrim(coalesce(new.raw_user_meta_data->>'venmo_handle', ''), '@');
+
+  if submitted_handle ~ '^[A-Za-z0-9_-]{3,30}$' then
+    insert into public.user_payment_info (user_id, venmo_handle)
+    values (new.id, submitted_handle)
+    on conflict (user_id) do update set
+      venmo_handle = excluded.venmo_handle,
+      updated_at = now();
+  end if;
 
   return new;
 end;
