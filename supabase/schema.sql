@@ -150,6 +150,28 @@ create policy "users can view their own payment info"
 grant select on public.user_payment_info to authenticated;
 grant all privileges on public.user_payment_info to service_role;
 
+-- Admin-editable home page blurbs. See supabase/add_site_content.sql.
+create table if not exists public.site_content (
+  key text primary key,
+  body text not null default '',
+  updated_at timestamptz not null default now()
+);
+
+alter table public.site_content enable row level security;
+
+drop policy if exists "site content is viewable by everyone" on public.site_content;
+create policy "site content is viewable by everyone"
+  on public.site_content for select
+  using (true);
+
+grant select on public.site_content to anon, authenticated;
+grant all privileges on public.site_content to service_role;
+
+-- Seeded empty; the app shows sensible defaults until you write something.
+insert into public.site_content (key, body)
+values ('credits_help', ''), ('password_help', '')
+on conflict (key) do nothing;
+
 create function public.handle_new_user()
 returns trigger as $$
 declare

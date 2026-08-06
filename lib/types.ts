@@ -54,3 +54,13 @@ export type PaymentInfo = {
 export type AdminUserResult = User & {
   venmo_handle: string | null;
 };
+
+export type SiteContent = {
+  key: string;
+  body: string;
+  updated_at: string;
+};
+
+/** The blurbs the home page shows, keyed as they're stored. */
+export const SITE_CONTENT_KEYS = ["credits_help", "password_help"] as const;
+export type SiteContentKey = (typeof SITE_CONTENT_KEYS)[number];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { AdminUserResult } from "@/lib/types";
@@ -21,6 +21,53 @@ export default function AdminPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [creditsHelp, setCreditsHelp] = useState("");
+  const [passwordHelp, setPasswordHelp] = useState("");
+  const [savingContent, setSavingContent] = useState(false);
+  const [contentNote, setContentNote] = useState<string | null>(null);
+
+  // Load whatever's currently on the home page so the boxes aren't blank.
+  useEffect(() => {
+    if (!profile?.is_admin) return;
+    supabase
+      .from("site_content")
+      .select("key, body")
+      .then(({ data }) => {
+        for (const row of data ?? []) {
+          if (row.key === "credits_help") setCreditsHelp(row.body ?? "");
+          if (row.key === "password_help") setPasswordHelp(row.body ?? "");
+        }
+      });
+  }, [profile?.is_admin]);
+
+  async function saveContent() {
+    setContentNote(null);
+    setError(null);
+    setSavingContent(true);
+    try {
+      const {
+        data: { session: freshSession },
+      } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/site-content", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${freshSession?.access_token}`,
+        },
+        body: JSON.stringify({
+          credits_help: creditsHelp,
+          password_help: passwordHelp,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Could not save.");
+      setContentNote("Home page updated.");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSavingContent(false);
+    }
+  }
 
   // Goes through the API rather than querying Supabase directly, because
   // payment details are RLS-restricted to their owner -- the browser client
@@ -138,9 +185,60 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="font-display text-2xl font-700 text-ink mb-1">Admin: adjust balance</h1>
+      <h1 className="font-display text-2xl font-700 text-ink mb-1">Admin</h1>
+      <p className="text-muted text-sm mb-8">
+        Adjust balances, get people back into their accounts, and edit what the home
+        page tells everyone.
+      </p>
+
+      {/* Home page blurbs. Stored in the database, so wording changes take
+          effect immediately without a redeploy. */}
+      <div className="border border-border bg-surface rounded-xl p-5 mb-8">
+        <h2 className="font-display font-600 text-ink mb-1">Home page notes</h2>
+        <p className="text-xs text-muted mb-4 leading-relaxed">
+          These show under &quot;How to get credits&quot; and &quot;Forgot your
+          password?&quot; on the home page. Everyone sees them, signed in or not.
+          Leave one blank to fall back to the default wording.
+        </p>
+
+        <label className="block text-xs uppercase tracking-wide text-muted mb-1">
+          How to get credits
+        </label>
+        <textarea
+          value={creditsHelp}
+          onChange={(e) => setCreditsHelp(e.target.value)}
+          rows={3}
+          maxLength={2000}
+          placeholder="e.g. Come find me at the dining hall between meals and I'll load you up."
+          className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-ink focus-ring mb-4"
+        />
+
+        <label className="block text-xs uppercase tracking-wide text-muted mb-1">
+          Forgot your password
+        </label>
+        <textarea
+          value={passwordHelp}
+          onChange={(e) => setPasswordHelp(e.target.value)}
+          rows={3}
+          maxLength={2000}
+          placeholder="e.g. Find me and I'll give you a reset code on the spot."
+          className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-ink focus-ring mb-4"
+        />
+
+        {contentNote && <p className="text-xs text-yes mb-3">{contentNote}</p>}
+
+        <button
+          onClick={saveContent}
+          disabled={savingContent}
+          className="w-full bg-brand text-bg font-display font-600 rounded-lg py-2.5 hover:opacity-90 transition-opacity disabled:opacity-40"
+        >
+          {savingContent ? "Saving…" : "Save home page notes"}
+        </button>
+      </div>
+
+      <h2 className="font-display font-600 text-ink mb-1">Adjust a balance</h2>
       <p className="text-muted text-sm mb-6">
-        Credit or debit a user's play-money balance. Every adjustment is logged
+        Credit or debit a user&apos;s play-money balance. Every adjustment is logged
         to their transaction history.
       </p>
 

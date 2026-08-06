@@ -6,6 +6,7 @@ import { Market } from "@/lib/types";
 import MarketCard from "@/components/MarketCard";
 import { useAuth } from "@/components/AuthProvider";
 import { useNow } from "@/lib/useNow";
+import WelcomePanel from "@/components/WelcomePanel";
 
 export default function HomePage() {
   const { profile } = useAuth();
@@ -42,10 +43,10 @@ export default function HomePage() {
 
   return (
     <>
-      <h1 className="font-display text-3xl font-700 text-ink mb-1">Open markets</h1>
-      <p className="text-muted text-sm mb-6">
-        All credits are play-money. Prices move as bets come in.
-      </p>
+      <WelcomePanel />
+
+      <h2 className="font-display text-2xl font-700 text-ink mb-1">Open markets</h2>
+      <p className="text-muted text-sm mb-6">Prices move as bets come in.</p>
 
       {loading && <p className="text-muted text-sm">Loading markets…</p>}
 
