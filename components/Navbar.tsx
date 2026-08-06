@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { formatCredits } from "@/lib/calculations";
 
 export default function Navbar() {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, profileError } = useAuth();
 
   // The auth state and the profile row load separately, so treat them as two
   // separate questions. Being signed in is what decides sign in vs. sign out;
@@ -43,10 +43,24 @@ export default function Navbar() {
           {signedIn && !isAdmin && (
             <Link
               href="/profile"
-              className="font-mono tabular-nums text-brand border border-border rounded-full px-3 py-1 hover:border-brand transition-colors"
-              title="Your credit balance"
+              className={`font-mono tabular-nums border rounded-full px-3 py-1 transition-colors ${
+                profileError
+                  ? "text-no border-no/50"
+                  : "text-brand border-border hover:border-brand"
+              }`}
+              title={
+                profileError
+                  ? `Couldn't load your profile: ${profileError}`
+                  : "Your credit balance"
+              }
             >
-              {profile ? formatCredits(profile.balance) : "…"} cr
+              {profile ? (
+                `${formatCredits(profile.balance)} cr`
+              ) : profileError ? (
+                "no profile"
+              ) : (
+                "… cr"
+              )}
             </Link>
           )}
 

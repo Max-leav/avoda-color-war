@@ -8,7 +8,10 @@ import { User } from "@/lib/types";
 type AuthContextType = {
   session: Session | null;
   profile: User | null;
+  /** True until the first session check finishes. */
   loading: boolean;
+  /** Set when we're signed in but couldn't read/create the users row. */
+  profileError: string | null;
   refreshProfile: () => Promise<void>;
 };
 
@@ -16,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   profile: null,
   loading: true,
+  profileError: null,
   refreshProfile: async () => {},
 });
 
@@ -27,16 +31,35 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase.from("users").select("*").eq("id", userId).single();
-    if (data) {
-      setProfile(data as User);
+    // maybeSingle() instead of single(): "no row" is an expected state here
+    // (that's what the self-heal below is for), and single() turns it into an
+    // error, which makes a real failure indistinguishable from a missing row.
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      // Errors here are almost always environment/RLS problems, not app bugs.
+      console.error("[auth] reading public.users failed:", error.message, error);
+      setProfileError(error.message);
       return;
     }
 
-    // No public.users row for this signed-in account (e.g. the auto-create
-    // trigger didn't fire for it). Self-heal by creating one now.
+    if (data) {
+      setProfile(data as User);
+      setProfileError(null);
+      return;
+    }
+
+    // Signed in, but no public.users row -- e.g. the account was created
+    // before the signup trigger existed. Ask the server to backfill one.
+    console.warn("[auth] no public.users row for", userId, "- attempting backfill");
+
     const {
       data: { session: freshSession },
     } = await supabase.auth.getSession();
@@ -51,9 +74,16 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         },
       });
       const body = await res.json();
-      if (res.ok) setProfile(body.profile as User);
-    } catch {
-      // Swallow -- profile stays null and the UI degrades gracefully.
+      if (res.ok) {
+        setProfile(body.profile as User);
+        setProfileError(null);
+      } else {
+        console.error("[auth] ensure-profile failed:", body.error);
+        setProfileError(body.error ?? "Could not create profile.");
+      }
+    } catch (err: any) {
+      console.error("[auth] ensure-profile request failed:", err);
+      setProfileError("Could not reach the profile endpoint.");
     }
   }
 
@@ -74,6 +104,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         loadProfile(newSession.user.id);
       } else {
         setProfile(null);
+        setProfileError(null);
       }
     });
 
@@ -81,7 +112,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, refreshProfile }}>
+    <AuthContext.Provider value={{ session, profile, loading, profileError, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
